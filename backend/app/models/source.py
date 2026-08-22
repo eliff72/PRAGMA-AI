@@ -15,8 +15,13 @@ class Source(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     competition_id: Mapped[int] = mapped_column(ForeignKey("competitions.id"))
     title: Mapped[str] = mapped_column(String(255))
-    source_type: Mapped[SourceType] = mapped_column(Enum(SourceType))
-    status: Mapped[SourceStatus] = mapped_column(Enum(SourceStatus), default=SourceStatus.ACTIVE)
+    source_type: Mapped[SourceType] = mapped_column(
+        Enum(SourceType, values_callable=lambda enum_cls: [e.value for e in enum_cls])
+    )
+    status: Mapped[SourceStatus] = mapped_column(
+        Enum(SourceStatus, values_callable=lambda enum_cls: [e.value for e in enum_cls]),
+        default=SourceStatus.ACTIVE,
+    )
     version: Mapped[int] = mapped_column(Integer, default=1)
     file_path: Mapped[str] = mapped_column(String(500))
     uploaded_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

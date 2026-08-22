@@ -14,7 +14,10 @@ class Escalation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     qa_log_id: Mapped[int] = mapped_column(ForeignKey("qa_logs.id"))
-    status: Mapped[EscalationStatus] = mapped_column(Enum(EscalationStatus), default=EscalationStatus.OPEN)
+    status: Mapped[EscalationStatus] = mapped_column(
+        Enum(EscalationStatus, values_callable=lambda enum_cls: [e.value for e in enum_cls]),
+        default=EscalationStatus.OPEN,
+    )
     assigned_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     support_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
