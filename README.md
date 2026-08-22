@@ -40,7 +40,7 @@ Daha fazla teknik detay için bkz. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md
 | Backend | **Python + FastAPI** | RAG ekosisteminde (embedding, vektör arama, LLM SDK'ları) en olgun dil; async destek, otomatik Swagger dokümantasyonu ile hızlı demo |
 | Veritabanı | **PostgreSQL + SQLAlchemy** | İlişkisel veri (roller, kaynak metadata, loglar, yarışma/kategori) için endüstri standardı, Docker ile 1 komutla ayağa kalkar |
 | Vektör arama | **ChromaDB** | Sunucu kurulumu gerektirmez, pip ile 2 dakikada kurulur, dosya tabanlı persist — MVP ve canlı demo için ideal |
-| LLM entegrasyonu | **OpenAI API** (embedding + chat) | En olgun/dokümante API, tek sağlayıcıdan hem embedding hem yanıt üretimi, düşük maliyetli modellerle (gpt-4o-mini) MVP'ye yeterli |
+| LLM entegrasyonu | **Google Gemini API** (embedding + chat) | Ücretsiz kotası olan tek sağlayıcıdan hem embedding (gemini-embedding-001) hem yanıt üretimi (gemini-3.6-flash), MVP/hackathon bütçesine uygun |
 | RAG orkestrasyon | **Custom (LangChain'siz)** | Hackathon temposunda ekip için şeffaf, debug edilebilir, minimal soyutlama — 4 adım (chunk → embed → retrieve → generate) doğrudan kodda |
 | Frontend | **React + Vite + TypeScript** | Hızlı kurulum/HMR, geniş ekosistem, ekibin öğrenme eğrisi düşük |
 | Stil | **Tailwind CSS** | Hızlı prototipleme, ayrı CSS dosyası yönetimi gerektirmez |
@@ -92,7 +92,7 @@ iskelet/özellikleri içerir:
 ## Hızlı Başlangıç
 
 ```bash
-cp .env.example .env      # değerleri doldurun (özellikle OPENAI_API_KEY)
+cp .env.example .env      # değerleri doldurun (özellikle GEMINI_API_KEY)
 docker compose up --build
 ```
 

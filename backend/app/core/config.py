@@ -21,12 +21,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
 
     # LLM / RAG
-    openai_api_key: str = ""
-    openai_chat_model: str = "gpt-4o-mini"
-    openai_embedding_model: str = "text-embedding-3-small"
+    gemini_api_key: str = ""
+    gemini_chat_model: str = "gemini-3.6-flash"
+    gemini_embedding_model: str = "gemini-embedding-001"
     chroma_persist_dir: str = "./app/data/chroma"
     rag_top_k: int = 5
-    rag_min_similarity: float = 0.72
+    rag_min_similarity: float = 0.35
 
 
 @lru_cache

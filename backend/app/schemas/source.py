@@ -1,9 +1,7 @@
 from pydantic import BaseModel
 
 
-class SourceOut(BaseModel):
-    id: str
+class SourceUploadResponse(BaseModel):
+    source_id: int
     title: str
-    source_type: str
-    status: str
-    version: int
+    chunk_count: int

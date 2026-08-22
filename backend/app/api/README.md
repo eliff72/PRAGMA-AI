@@ -2,34 +2,39 @@
 
 ## Roller ve Auth
 
-JWT tabanli auth (`app/core/security.py`). Token'daki `role` claim'i ile
-`app/api/deps.py` icindeki `require_role(*roles)` dependency'si endpoint bazli
-yetkilendirme yapar. Roller: `competitor`, `content_manager`, `support_agent`,
-`system_admin` (bkz. `feature/database` -> `app/models/enums.py::UserRole`).
+JWT tabanli auth (`app/core/security.py`, bcrypt sifre hash + HS256 JWT).
+`app/api/auth.py`:
 
-`/auth/login` su an icin in-memory demo kullanicilar uzerinden calisir (4 rol
-icin birer hesap, sifre: `demo1234`) — `feature/database` merge edildiginde
-gercek `User` tablosuna baglanacak (bkz. dosyadaki TODO).
+- `POST /auth/register` — email, password, full_name, role (`competitor`,
+  `content_manager`, `support_agent`, `system_admin`) alir; sifreyi hashleyip
+  gercek `users` tablosuna kaydeder. Ayni email ile kayit varsa 409 doner.
+- `POST /auth/login` — email/password dogrular, basariliysa `sub` (user id) ve
+  `role` claim'lerini iceren bir JWT doner.
 
-## Router'lar → Akislarla eslesme
+`app/api/deps.py`:
 
-| Router | Akis | Roller |
-|---|---|---|
-| `competitions.py` | Akis 1 (yarisma secimi) | tum roller |
-| `questions.py` | Akis 1 (soru-cevap) | tum roller |
-| `sources.py` | Akis 2 (kaynak yukleme/pasife alma) | content_manager, system_admin |
-| `escalations.py` | Akis 3 (destek devri) | support_agent, system_admin |
-| `metrics.py` | Sistem Yoneticisi izleme | system_admin |
+- `get_current_user` — `Authorization: Bearer <token>` header'indaki JWT'yi
+  dogrulayip `sub` claim'inden gercek `User` satirini DB'den okur (bulunamazsa
+  veya `is_active=False` ise 401).
+- `require_role(*roles: UserRole)` — dependency factory; kullanicinin rolu
+  verilenler arasinda degilse 403 doner.
 
-## Entegrasyon noktalari
+## Korunan endpoint'ler
 
-Bu branch, henuz merge edilmemis `feature/database` ve `feature/backend-rag`
-branch'lerine dogrudan bagimli degil:
+| Endpoint | Zorunlu rol |
+|---|---|
+| `POST /competitions/{slug}/ask` | `competitor` |
+| `POST /competitions/{slug}/sources/upload` | `content_manager` |
 
-- Veritabani islemleri her router'da `TODO(feature/database)` ile isaretlendi.
-- RAG cagrisi `app/services/rag_gateway.py` uzerinden yapiliyor; bu dosya
-  `app.rag.pipeline` mevcut degilse (merge edilmediyse) guvenli bir fallback
-  donuyor, merge sonrasi otomatik gercek pipeline'a gecer.
+`POST /competitions` (yarisma olusturma) su an icin acik — task kapsaminda rol
+kisitlamasi istenmedi.
 
-Boylece branch tek basina calisir/test edilir, merge sirasinda sadece TODO'lar
-gercek DB sorgulariyla degistirilir.
+## Entegrasyon notu
+
+Bu katman artik `feature/database` ve `feature/backend-rag` ile tam entegre
+calisir: RAG cagrisi dogrudan `app.rag.pipeline.answer_question` /
+`app.rag.ingestion.ingest_document` uzerinden yapilir, kullanicilar gercek
+`users` tablosunda tutulur. Erken donemde bu branch'i tek basina
+calistirabilmek icin kullanilan gecici in-memory demo kullanicilar ve
+`app/services/rag_gateway.py` fallback'i artik gerekli degil (ikincisi
+`feature/backend-rag` merge sonrasi kullanilmiyor, ama dokunulmadan birakildi).

@@ -1,18 +1,19 @@
 from pydantic import BaseModel
 
 
-class QuestionRequest(BaseModel):
+class AskRequest(BaseModel):
     question: str
 
 
-class SourceCitationOut(BaseModel):
-    source_id: str
+class SourceCitationRead(BaseModel):
+    source_id: int
     source_title: str
     similarity: float
 
 
-class AnswerResponse(BaseModel):
+class AskResponse(BaseModel):
+    qa_log_id: int
     answer: str | None
     confidence: float
     needs_human: bool
-    sources: list[SourceCitationOut] = []
+    sources: list[SourceCitationRead] = []

@@ -1,0 +1,51 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 448 >>
+stream
+BT
+/F1 12 Tf
+72 740 Td
+14 TL
+(TEKNOFEST Insansi Robot Yarismasi - Sartname \(Test Belgesi\)) Tj
+T*
+() Tj
+T*
+(1. Basvuru son tarihi 15 Eylul 2026'dir.) Tj
+T*
+(2. Takim uyelerinin yas sinirlari 18 ile 25 arasindadir.) Tj
+T*
+(3. Final yarismasi Ankara'da duzenlenecektir.) Tj
+T*
+(4. Robotun agirligi en fazla 15 kilogram olmalidir.) Tj
+T*
+(5. Her takim en fazla 6 kisiden olusabilir.) Tj
+T*
+(6. Yarisma suresince robotun pil degisimi yapilamaz.) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+810
+%%EOF
