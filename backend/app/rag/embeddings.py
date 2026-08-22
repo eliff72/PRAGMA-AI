@@ -1,18 +1,22 @@
-from openai import OpenAI
+import google.generativeai as genai
 
 from app.core.config import get_settings
 
 settings = get_settings()
-_client = OpenAI(api_key=settings.openai_api_key)
+genai.configure(api_key=settings.gemini_api_key)
+
+_MODEL_NAME = f"models/{settings.gemini_embedding_model}"
 
 
 def embed_text(text: str) -> list[float]:
-    response = _client.embeddings.create(model=settings.openai_embedding_model, input=text)
-    return response.data[0].embedding
+    """Soru gibi tek bir sorgu metnini embed eder (asimetrik retrieval icin task_type=retrieval_query)."""
+    result = genai.embed_content(model=_MODEL_NAME, content=text, task_type="retrieval_query")
+    return result["embedding"]
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Kaynak chunk'larini embed eder (task_type=retrieval_document)."""
     if not texts:
         return []
-    response = _client.embeddings.create(model=settings.openai_embedding_model, input=texts)
-    return [item.embedding for item in response.data]
+    result = genai.embed_content(model=_MODEL_NAME, content=texts, task_type="retrieval_document")
+    return result["embedding"]

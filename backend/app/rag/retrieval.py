@@ -13,12 +13,13 @@ def retrieve(competition_slug: str, question: str, top_k: int | None = None) -> 
     query_embedding = embed_text(question)
     results = vector_store.query(competition_slug, query_embedding, top_k)
 
+    ids = results.get("ids") or [[]]
     documents = results.get("documents") or [[]]
     metadatas = results.get("metadatas") or [[]]
     distances = results.get("distances") or [[]]
 
     chunks: list[RetrievedChunk] = []
-    for doc, meta, distance in zip(documents[0], metadatas[0], distances[0]):
+    for chunk_id, doc, meta, distance in zip(ids[0], documents[0], metadatas[0], distances[0]):
         similarity = 1 - distance  # chroma cosine distance -> benzerlik skoru
         chunks.append(
             RetrievedChunk(
@@ -26,6 +27,7 @@ def retrieve(competition_slug: str, question: str, top_k: int | None = None) -> 
                 source_id=str(meta.get("source_id", "")),
                 source_title=str(meta.get("source_title", "")),
                 similarity=similarity,
+                chroma_vector_id=chunk_id,
             )
         )
     return sorted(chunks, key=lambda c: c.similarity, reverse=True)

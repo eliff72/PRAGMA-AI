@@ -7,6 +7,7 @@ class RetrievedChunk:
     source_id: str
     source_title: str
     similarity: float
+    chroma_vector_id: str
 
 
 @dataclass
@@ -14,6 +15,7 @@ class SourceCitation:
     source_id: str
     source_title: str
     similarity: float
+    chroma_vector_id: str
 
 
 @dataclass

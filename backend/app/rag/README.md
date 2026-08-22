@@ -17,9 +17,13 @@ Her yarışma kendi ChromaDB koleksiyonunda (`competition_<slug>`) tutulur;
 ## Güven eşiği (MVP #3)
 
 `RAG_MIN_SIMILARITY` (bkz. `.env.example`) altında kalan sorgularda LLM'e hiç
-gidilmez; `RAGAnswer.needs_human=True` döner ve `answer=None` olur. Eşik
-değeri `feature/backend-api` ve `feature/frontend-user` ile birlikte gerçek
-verilerle kalibre edilmeli.
+gidilmez; `RAGAnswer.needs_human=True` döner ve `answer=None` olur.
+
+Gemini `gemini-embedding-001` ile yapılan gerçek testte (bkz. commit mesajı /
+PR açıklaması) alakalı bir soru ~0.51, alakasız bir soru ~0.11 benzerlik skoru
+aldı — bu yüzden varsayılan `0.35` yapıldı. Bu ilk kalibrasyon küçük bir örnek
+üzerinde; `feature/backend-api` ve `feature/frontend-user` ile birlikte daha
+fazla gerçek soru/kaynak çiftiyle yeniden ayarlanmalı.
 
 ## Kaynak pasife alma (MVP #6)
 

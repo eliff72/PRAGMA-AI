@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.competitions import router as competitions_router
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -25,5 +26,7 @@ def health_check() -> dict:
     return {"status": "ok", "service": settings.app_name}
 
 
-# NOT: Rol/soru-cevap/kaynak router'lari feature/backend-api ve feature/backend-rag
-# branch'lerinde app.api altina eklenip burada include_router ile baglanacak.
+app.include_router(competitions_router)
+
+# NOT: Rol/auth router'lari feature/backend-api branch'inde app.api altina
+# eklenip burada include_router ile baglanacak.
