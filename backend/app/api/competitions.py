@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models import Competition, Escalation, QALog, QASourceRef, Source, SourceChunk
+from app.models import Competition, Escalation, QALog, QASourceRef, Source, SourceChunk, User
 from app.models.enums import EscalationStatus, SourceStatus, SourceType, UserRole
 from app.rag.ingestion import ingest_document
 from app.rag.pipeline import answer_question
@@ -12,7 +12,7 @@ from app.schemas.competition import CompetitionCreate, CompetitionRead
 from app.schemas.qa import AskRequest, AskResponse, SourceCitationRead
 from app.schemas.source import SourceUploadResponse
 
-from .deps import get_or_create_demo_user
+from .deps import require_role
 
 router = APIRouter(prefix="/competitions", tags=["competitions"])
 
@@ -24,6 +24,11 @@ def _get_competition_or_404(db: Session, slug: str) -> Competition:
     if not competition:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Yarışma bulunamadı: {slug}")
     return competition
+
+
+@router.get("", response_model=list[CompetitionRead])
+def list_competitions(db: Session = Depends(get_db)) -> list[Competition]:
+    return db.query(Competition).filter(Competition.is_active.is_(True)).order_by(Competition.id).all()
 
 
 @router.post("", response_model=CompetitionRead, status_code=status.HTTP_201_CREATED)
@@ -45,9 +50,10 @@ def upload_source(
     title: str | None = Form(None),
     source_type: SourceType = Form(SourceType.SPECIFICATION),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.CONTENT_MANAGER)),
 ) -> SourceUploadResponse:
     competition = _get_competition_or_404(db, slug)
-    uploader = get_or_create_demo_user(db, UserRole.CONTENT_MANAGER)
+    uploader = current_user
 
     competition_dir = UPLOAD_DIR / slug
     competition_dir.mkdir(parents=True, exist_ok=True)
@@ -87,9 +93,14 @@ def upload_source(
 
 
 @router.post("/{slug}/ask", response_model=AskResponse, status_code=status.HTTP_201_CREATED)
-def ask_question(slug: str, payload: AskRequest, db: Session = Depends(get_db)) -> AskResponse:
+def ask_question(
+    slug: str,
+    payload: AskRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.COMPETITOR)),
+) -> AskResponse:
     competition = _get_competition_or_404(db, slug)
-    asker = get_or_create_demo_user(db, UserRole.COMPETITOR)
+    asker = current_user
 
     result = answer_question(slug, payload.question)
 
