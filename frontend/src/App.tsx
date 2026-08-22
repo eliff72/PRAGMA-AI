@@ -9,7 +9,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<CompetitionSelectPage />} />
       <Route path="/sorular" element={<CompetitionSelectPage />} />
-      <Route path="/sorular/:competitionId" element={<ChatPage />} />
+      <Route path="/sorular/:competitionSlug" element={<ChatPage />} />
     </Routes>
   );
 }

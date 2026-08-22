@@ -1,25 +1,27 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCompetitions, type Competition } from "../../api/questions";
+import { fetchCompetitions } from "../../api/competitions";
+import type { Competition } from "../../types";
 
 export default function CompetitionSelectPage() {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedSlug, setSelectedSlug] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    getCompetitions().then((data) => {
-      setCompetitions(data);
-      setLoading(false);
-    });
+    fetchCompetitions()
+      .then(setCompetitions)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, []);
 
-  const selected = competitions.find((c) => c.id === selectedId);
+  const selected = competitions.find((c) => c.slug === selectedSlug);
 
   const handleContinue = () => {
-    if (selectedId) {
-      navigate(`/sorular/${selectedId}`);
+    if (selectedSlug) {
+      navigate(`/sorular/${selectedSlug}`);
     }
   };
 
@@ -35,30 +37,32 @@ export default function CompetitionSelectPage() {
 
         {loading ? (
           <p className="text-sm text-slate-400">Yükleniyor...</p>
+        ) : error ? (
+          <p className="text-sm text-red-500">
+            Yarışmalar yüklenemedi. Backend'in çalıştığından emin olun.
+          </p>
         ) : (
           <>
             <select
-              value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
+              value={selectedSlug}
+              onChange={(e) => setSelectedSlug(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm mb-3 outline-none focus:border-blue-500"
             >
               <option value="">Bir yarışma seçin...</option>
               {competitions.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={c.slug} value={c.slug}>
                   {c.name}
                 </option>
               ))}
             </select>
 
-            {selected && (
-              <p className="text-sm text-slate-500 mb-4">
-                {selected.description}
-              </p>
+            {selected?.description && (
+              <p className="text-sm text-slate-500 mb-4">{selected.description}</p>
             )}
 
             <button
               onClick={handleContinue}
-              disabled={!selectedId}
+              disabled={!selectedSlug}
               className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white disabled:opacity-40"
             >
               Devam Et

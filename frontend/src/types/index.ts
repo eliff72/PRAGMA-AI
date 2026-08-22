@@ -1,7 +1,9 @@
 export interface Competition {
-  id: string;
+  id: number;
   name: string;
   slug: string;
+  description: string | null;
+  is_active: boolean;
 }
 
 export interface SourceCitation {
@@ -11,6 +13,7 @@ export interface SourceCitation {
 }
 
 export interface AnswerResponse {
+  qa_log_id: number;
   answer: string | null;
   confidence: number;
   needs_human: boolean;
