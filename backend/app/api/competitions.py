@@ -26,6 +26,11 @@ def _get_competition_or_404(db: Session, slug: str) -> Competition:
     return competition
 
 
+@router.get("", response_model=list[CompetitionRead])
+def list_competitions(db: Session = Depends(get_db)) -> list[Competition]:
+    return db.query(Competition).filter(Competition.is_active.is_(True)).order_by(Competition.id).all()
+
+
 @router.post("", response_model=CompetitionRead, status_code=status.HTTP_201_CREATED)
 def create_competition(payload: CompetitionCreate, db: Session = Depends(get_db)) -> Competition:
     if db.query(Competition).filter(Competition.slug == payload.slug).first():
