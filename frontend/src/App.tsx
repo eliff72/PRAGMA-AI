@@ -1,44 +1,90 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./auth/AuthContext";
-import ProtectedRoute from "./auth/ProtectedRoute";
-import MockDataBanner from "./components/MockDataBanner";
-import CompetitionSelectPage from "./pages/user/CompetitionSelectPage";
-import ChatPage from "./pages/user/ChatPage";
-import LoginPage from "./pages/admin/LoginPage";
-import AdminLayout from "./pages/admin/AdminLayout";
-import SourcesPage from "./pages/admin/SourcesPage";
-import EscalationsPage from "./pages/admin/EscalationsPage";
-import DashboardPage from "./pages/admin/DashboardPage";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { CompetitorChatPage } from "./pages/CompetitorChatPage";
+import { MyEscalationsPage } from "./pages/MyEscalationsPage";
+import { RequirementsPage } from "./pages/RequirementsPage";
+import { ContentUploadPage } from "./pages/ContentUploadPage";
+import { ContentFaqPage } from "./pages/ContentFaqPage";
+import { SupportQueuePage } from "./pages/SupportQueuePage";
+import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 
 export default function App() {
   return (
     <AuthProvider>
-      <MockDataBanner />
-      <Routes>
-        <Route path="/" element={<CompetitionSelectPage />} />
-        <Route path="/sorular" element={<CompetitionSelectPage />} />
-        <Route path="/sorular/:competitionSlug" element={<ChatPage />} />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/giris" element={<LoginPage />} />
+          <Route path="/kayit" element={<RegisterPage />} />
 
-        <Route path="/admin/login" element={<LoginPage />} />
+          <Route
+            path="/sohbet"
+            element={
+              <ProtectedRoute allow={["yarismaci"]}>
+                <CompetitorChatPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route path="/admin" element={<ProtectedRoute />}>
-          <Route element={<AdminLayout />}>
-            <Route index element={<Navigate to="kaynaklar" replace />} />
+          <Route
+            path="/sorularim"
+            element={
+              <ProtectedRoute allow={["yarismaci"]}>
+                <MyEscalationsPage />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route element={<ProtectedRoute allowedRoles={["content_manager", "system_admin"]} />}>
-              <Route path="kaynaklar" element={<SourcesPage />} />
-            </Route>
+          <Route
+            path="/sartname"
+            element={
+              <ProtectedRoute allow={["yarismaci"]}>
+                <RequirementsPage />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route element={<ProtectedRoute allowedRoles={["support_agent", "system_admin"]} />}>
-              <Route path="destek" element={<EscalationsPage />} />
-            </Route>
+          <Route
+            path="/content/kaynaklar"
+            element={
+              <ProtectedRoute allow={["icerik_yonetici"]}>
+                <ContentUploadPage />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route element={<ProtectedRoute allowedRoles={["system_admin"]} />}>
-              <Route path="izleme" element={<DashboardPage />} />
-            </Route>
-          </Route>
-        </Route>
-      </Routes>
+          <Route
+            path="/content/soru-havuzu"
+            element={
+              <ProtectedRoute allow={["icerik_yonetici"]}>
+                <ContentFaqPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/destek"
+            element={
+              <ProtectedRoute allow={["destek"]}>
+                <SupportQueuePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/panel"
+            element={
+              <ProtectedRoute allow={["admin"]}>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/giris" replace />} />
+        </Routes>
+      </BrowserRouter>
     </AuthProvider>
   );
 }

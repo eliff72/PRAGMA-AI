@@ -19,3 +19,4 @@ class SourceRead(BaseModel):
     version: int
     uploaded_by: str
     uploaded_at: datetime
+    source_url: str | None = None

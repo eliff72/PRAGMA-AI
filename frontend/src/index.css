@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  /* --- T3 KYS tarzı kurumsal panel paleti: açık zemin, lacivert metin, kırmızı tek aksiyon rengi --- */
+  --color-navy-950: #0c1c34;
+  --color-navy-900: #12294a;
+  --color-navy-800: #1a3865;
+  --color-navy-700: #24487d;
+  --color-navy-600: #3a5da0;
+
+  --color-flag-600: #d0102a;
+  --color-flag-700: #a90c22;
+  --color-flag-50: #fdeced;
+
+  --color-gold-500: #b8860b;
+  --color-gold-100: #f8ecd4;
+
+  --color-bg: #f3f4f7;
+  --color-bg-panel: #f8f9fb;
+  --color-surface: #ffffff;
+
+  --color-ink-900: #101828;
+  --color-ink-700: #344055;
+  --color-ink-500: #667085;
+  --color-ink-300: #98a2b3;
+
+  --color-border: #e4e7ec;
+  --color-success: #17804f;
+  --color-success-bg: #e8f6ef;
+
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+html {
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-ink-900);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: var(--color-flag-600);
+  color: white;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-flag-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

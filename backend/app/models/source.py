@@ -24,6 +24,7 @@ class Source(Base):
     )
     version: Mapped[int] = mapped_column(Integer, default=1)
     file_path: Mapped[str] = mapped_column(String(500))
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     uploaded_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     superseded_by_id: Mapped[int | None] = mapped_column(ForeignKey("sources.id"), nullable=True)

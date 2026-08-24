@@ -14,3 +14,19 @@ class EscalationOut(BaseModel):
 class EscalationAnswerRequest(BaseModel):
     answer: str
     add_to_faq: bool = False
+
+
+class EscalationResolveRequest(BaseModel):
+    answer: str
+
+
+class EscalationRead(BaseModel):
+    """frontend/src/types/index.ts > Escalation ile birebir uyumlu."""
+
+    id: str
+    question: str
+    competitionName: str
+    askedBy: str
+    status: str  # "bekliyor" | "cozuldu"
+    createdAt: str
+    answer: str | None = None
