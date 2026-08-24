@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.competitions import router as competitions_router
+from app.api.escalations import router as escalations_router
+from app.api.metrics import router as metrics_router
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -29,3 +31,5 @@ def health_check() -> dict:
 
 app.include_router(auth_router)
 app.include_router(competitions_router)
+app.include_router(escalations_router)
+app.include_router(metrics_router)

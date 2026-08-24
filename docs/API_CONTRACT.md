@@ -31,6 +31,24 @@ adresini de kullanabilirsin (Swagger UI) — buradaki örnekler onunla birebir t
 | [`/competitions`](#post-competitions) | POST | Herkese açık (henüz rol kısıtı yok) |
 | [`/competitions/{slug}/ask`](#post-competitionsslugask) | POST | Sadece `competitor` |
 | [`/competitions/{slug}/sources/upload`](#post-competitionsslugsourcesupload) | POST | Sadece `content_manager` |
+| [`/competitions/{slug}/sources`](#get-competitionsslugsources) | GET | `content_manager`, `system_admin` |
+| [`/competitions/{slug}/sources/{source_id}/deactivate`](#post-competitionsslugsourcessource_iddeactivate) | POST | `content_manager`, `system_admin` |
+| [`/escalations`](#get-escalations) | GET | `support_agent`, `system_admin` |
+| [`/escalations/{escalation_id}/answer`](#post-escalationsescalation_idanswer) | POST | `support_agent`, `system_admin` |
+| [`/metrics/dashboard`](#get-metricsdashboard) | GET | Sadece `system_admin` |
+
+---
+
+## Bilinen sorun: `sources/upload`'da `title`
+
+`feature/frontend-admin`'in `api/sources.ts`'i `title`'ı multipart form alanı
+olarak değil, **query string parametresi** olarak gönderiyor
+(`axios.post(url, formData, { params: { title } })`). Bu frontend tarafında
+düzeltilmesi gereken bir sorundu, ama backend'i buna göre esnettik: `title`
+artık hem form alanından hem query string'den kabul ediliyor (hangisi
+doluysa o kullanılır, ikisi de boşsa dosya adı kullanılır). Yani mevcut
+frontend-admin kodu **değiştirilmeden** çalışır; yine de yeni kod yazarken
+`title`'ı form alanı olarak göndermek (diğer örneklerdeki gibi) önerilir.
 
 ---
 
@@ -317,3 +335,225 @@ belgelerde 1 olması normaldir).
 | Yarışma bulunamadı | `404` | `{"detail": "Yarışma bulunamadı: olmayan-yarisma"}` | `{slug}` yolundaki yarışma DB'de yok |
 
 **Erişim:** Sadece `content_manager` rolü.
+
+---
+
+## `GET /competitions/{slug}/sources`
+
+Bir yarışmaya yüklenmiş tüm kaynakları (aktif + pasif) listeler.
+
+**URL:** `GET http://localhost:8000/competitions/{slug}/sources`
+(örnek: `GET http://localhost:8000/competitions/insansi-robot/sources`)
+
+**Header'lar:**
+```
+Authorization: Bearer <access_token>   (rol: content_manager veya system_admin)
+```
+
+**Request body:** Yok.
+
+**Başarılı response — `200 OK`:**
+```json
+[
+  {
+    "id": 8,
+    "title": "Insansi Robot Sartnamesi v1",
+    "source_type": "specification",
+    "status": "active",
+    "version": 1,
+    "uploaded_by": "Mehmet Kaya",
+    "uploaded_at": "2026-08-22T20:04:26.680297Z"
+  },
+  {
+    "id": 10,
+    "title": "Query Param Testi",
+    "source_type": "specification",
+    "status": "inactive",
+    "version": 1,
+    "uploaded_by": "Main Test CM",
+    "uploaded_at": "2026-08-24T05:29:27.566181Z"
+  }
+]
+```
+Kaynak yoksa boş dizi (`[]`) döner.
+
+**Hata durumları:**
+
+| Durum | Kod | Örnek body | Sebep |
+|---|---|---|---|
+| Token yok/geçersiz | `401` | `{"detail": "Not authenticated"}` | `Authorization` header'ı eksik veya token bozuk/süresi dolmuş |
+| Yetkisiz rol | `403` | `{"detail": "Bu islem icin yetkiniz yok"}` | Rol `content_manager`/`system_admin` değil |
+| Yarışma bulunamadı | `404` | `{"detail": "Yarışma bulunamadı: olmayan-yarisma"}` | `{slug}` yolundaki yarışma DB'de yok |
+
+**Erişim:** `content_manager`, `system_admin`.
+
+---
+
+## `POST /competitions/{slug}/sources/{source_id}/deactivate`
+
+Bir kaynağı pasife alır (`status=inactive`) — silinmez, denetlenebilirlik için
+DB'de kalır. Aynı zamanda o kaynağın chunk'larını ChromaDB koleksiyonundan
+siler, böylece bundan sonraki sorularda kaynak olarak kullanılmaz.
+
+**URL:** `POST http://localhost:8000/competitions/{slug}/sources/{source_id}/deactivate`
+(örnek: `POST http://localhost:8000/competitions/insansi-robot/sources/10/deactivate`)
+
+**Header'lar:**
+```
+Authorization: Bearer <access_token>   (rol: content_manager veya system_admin)
+```
+
+**Request body:** Yok.
+
+**Başarılı response — `200 OK`:**
+```json
+{
+  "id": 10,
+  "title": "Query Param Testi",
+  "source_type": "specification",
+  "status": "inactive",
+  "version": 1,
+  "uploaded_by": "Main Test CM",
+  "uploaded_at": "2026-08-24T05:29:27.566181Z"
+}
+```
+
+**Hata durumları:**
+
+| Durum | Kod | Örnek body | Sebep |
+|---|---|---|---|
+| Token yok/geçersiz | `401` | `{"detail": "Not authenticated"}` | `Authorization` header'ı eksik veya token bozuk/süresi dolmuş |
+| Yetkisiz rol | `403` | `{"detail": "Bu islem icin yetkiniz yok"}` | Rol `content_manager`/`system_admin` değil |
+| Kaynak veya yarışma bulunamadı | `404` | `{"detail": "Kaynak bulunamadı: 999"}` / `{"detail": "Yarışma bulunamadı: olmayan-yarisma"}` | `{slug}` veya `{source_id}` geçersiz |
+
+**Erişim:** `content_manager`, `system_admin`.
+
+---
+
+## `GET /escalations`
+
+Henüz yanıtlanmamış (`status=open`) tüm escalation'ları (insana yönlenen
+sorular) yarışma adı ve tarihle birlikte listeler.
+
+**URL:** `GET http://localhost:8000/escalations`
+
+**Header'lar:**
+```
+Authorization: Bearer <access_token>   (rol: support_agent veya system_admin)
+```
+
+**Request body:** Yok.
+
+**Başarılı response — `200 OK`:**
+```json
+[
+  {
+    "id": 9,
+    "question": "Dunyanin nufusu kactir?",
+    "competition_name": "Teknofest Insansi Robot Yarismasi",
+    "status": "open",
+    "created_at": "2026-08-24T05:30:03.181313Z"
+  }
+]
+```
+Bekleyen soru yoksa boş dizi (`[]`) döner.
+
+**Hata durumları:**
+
+| Durum | Kod | Örnek body | Sebep |
+|---|---|---|---|
+| Token yok/geçersiz | `401` | `{"detail": "Not authenticated"}` | `Authorization` header'ı eksik veya token bozuk/süresi dolmuş |
+| Yetkisiz rol | `403` | `{"detail": "Bu islem icin yetkiniz yok"}` | Rol `support_agent`/`system_admin` değil |
+
+**Erişim:** `support_agent`, `system_admin`.
+
+---
+
+## `POST /escalations/{escalation_id}/answer`
+
+Destek ekibinin bir escalation'ı yanıtlamasını sağlar — `status=resolved`
+yapılır, yanıtlayan kullanıcı `assigned_to_id` olarak kaydedilir.
+`add_to_faq=true` gönderilirse aynı soru/cevap `faq_entries` tablosuna da
+eklenir (SSS havuzuna terfi — kaynak havuzuna embed edilmesi ayrı, ileride
+yapılacak bir adımdır, bkz. `FAQEntry` model docstring'i).
+
+**URL:** `POST http://localhost:8000/escalations/{escalation_id}/answer`
+(örnek: `POST http://localhost:8000/escalations/9/answer`)
+
+**Header'lar:**
+```
+Authorization: Bearer <access_token>   (rol: support_agent veya system_admin)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+  "answer": "Bu soru yarismayla ilgili degil, dunya nufusu guncel kaynaklardan takip edilebilir.",
+  "add_to_faq": true
+}
+```
+`add_to_faq` opsiyoneldir, varsayılan `false`'tur.
+
+**Başarılı response — `200 OK`:**
+```json
+{
+  "id": 9,
+  "question": "Dunyanin nufusu kactir?",
+  "competition_name": "Teknofest Insansi Robot Yarismasi",
+  "status": "resolved",
+  "created_at": "2026-08-24T05:30:03.181313Z"
+}
+```
+
+**Hata durumları:**
+
+| Durum | Kod | Örnek body | Sebep |
+|---|---|---|---|
+| Token yok/geçersiz | `401` | `{"detail": "Not authenticated"}` | `Authorization` header'ı eksik veya token bozuk/süresi dolmuş |
+| Yetkisiz rol | `403` | `{"detail": "Bu islem icin yetkiniz yok"}` | Rol `support_agent`/`system_admin` değil |
+| Escalation bulunamadı | `404` | `{"detail": "Escalation bulunamadı: 999"}` | `{escalation_id}` geçersiz |
+
+**Erişim:** `support_agent`, `system_admin`.
+
+---
+
+## `GET /metrics/dashboard`
+
+Sistem Yöneticisi izleme paneli: toplam soru sayısı, insana yönlendirme
+oranı (0-1 arası kesir — yüzdeye çevirmek için `×100`), ve en sık soru
+sorulan yarışma kategorileri (azalan sırada, soru sayısına göre).
+
+**URL:** `GET http://localhost:8000/metrics/dashboard`
+
+**Header'lar:**
+```
+Authorization: Bearer <access_token>   (rol: system_admin)
+```
+
+**Request body:** Yok.
+
+**Başarılı response — `200 OK`:**
+```json
+{
+  "total_questions": 13,
+  "escalation_rate": 0.46153846153846156,
+  "top_topics": [
+    "Teknofest Insansi Robot Yarismasi",
+    "Main Dogrulama Yarismasi 2",
+    "Teknofest Test Yarismasi",
+    "Main Dogrulama Yarismasi"
+  ]
+}
+```
+Hiç soru sorulmamışsa `escalation_rate: null`, `total_questions: 0`,
+`top_topics: []` döner.
+
+**Hata durumları:**
+
+| Durum | Kod | Örnek body | Sebep |
+|---|---|---|---|
+| Token yok/geçersiz | `401` | `{"detail": "Not authenticated"}` | `Authorization` header'ı eksik veya token bozuk/süresi dolmuş |
+| Yetkisiz rol | `403` | `{"detail": "Bu islem icin yetkiniz yok"}` | Rol `system_admin` değil |
+
+**Erişim:** Sadece `system_admin` rolü.
