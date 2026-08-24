@@ -1,4 +1,5 @@
 import json
+import logging
 from difflib import SequenceMatcher
 
 import google.generativeai as genai
@@ -7,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import FAQEntry
+
+logger = logging.getLogger(__name__)
 
 # Gemini cagrisi basarisiz olursa (kota/ag hatasi) kullanilan basit metin
 # benzerligi esigi. LLM'in yakalayacagi genis parafrazlari yakalamaz ama
@@ -75,12 +78,13 @@ def find_matching_faq(db: Session, competition_id: int, question: str) -> FAQEnt
             ),
         )
         parsed = json.loads(response.text)
-    except GoogleAPIError:
+    except GoogleAPIError as exc:
         # Gemini API gecici olarak ulasilamaz (kota/ag hatasi) — anlamsal
         # eslestirme yapamayiz ama FAQ havuzunda ZATEN kayitli, neredeyse
         # ayni ifadeli bir soru varsa onu yine de bulmak icin basit metin
         # benzerligine dusuyoruz (bkz. rapor: kok neden — API kesintisinde
         # FAQ'daki hazir cevaplar bile erisilemez hale geliyordu).
+        logger.error("Gemini FAQ eslestirme basarisiz (soru: %r): %s", question, exc)
         return _text_similarity_fallback(question, faqs)
     except (json.JSONDecodeError, AttributeError):
         return None

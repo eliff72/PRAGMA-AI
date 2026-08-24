@@ -19,10 +19,12 @@ Tarayıcıda `http://localhost:5173` açılır.
 sahte veriler ve sahte RAG mantığıyla **tamamen bağımsız çalışır** — backend
 hazır olmasa bile demo yapılabilir, PDR/jüri sunumu için idealdir.
 
-Backend (`http://localhost:8000`) hazır olduğunda tek yapmanız gereken:
+`.env.example`'daki varsayılan zaten `VITE_USE_MOCK=false`'tur (gerçek
+backend'e gider); mock modu SADECE backend hiç çalışmıyorsa/hazır değilse
+bilerek `true` yapmanız gerekir:
 
 ```
-VITE_USE_MOCK=false
+VITE_USE_MOCK=true
 ```
 
 Tüm `src/api/*.ts` dosyaları zaten gerçek endpoint'lere (`/api/questions`,

@@ -1,4 +1,5 @@
 import json
+import logging
 
 import google.generativeai as genai
 from google.api_core.exceptions import GoogleAPIError
@@ -6,6 +7,7 @@ from google.api_core.exceptions import GoogleAPIError
 from app.core.config import get_settings
 from app.rag.schemas import RAGAnswer, RetrievedChunk, SourceCitation
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 genai.configure(api_key=settings.gemini_api_key)
 
@@ -61,9 +63,13 @@ def generate_answer(question: str, chunks: list[RetrievedChunk]) -> RAGAnswer:
                 response_schema=ANSWER_SCHEMA,
             ),
         )
-    except GoogleAPIError:
+    except GoogleAPIError as exc:
         # Gemini API gecici olarak ulasilamaz/kota asimi vb. — kullaniciya 500
         # cikarmak yerine insana yonlendir (MVP gereksinim #3 ile tutarli).
+        # Bu durum kullaniciya "kaynaklarda yok" ile AYNI gorunur, o yuzden
+        # burada loglamak zorunlu — yoksa API hatasi ile gercek kanit
+        # eksikligi ayirt edilemez (bkz. rapor: yarisma takvimi kok neden).
+        logger.error("Gemini generate_content basarisiz (soru: %r): %s", question, exc)
         return RAGAnswer(answer=None, confidence=top_similarity, needs_human=True, sources=[])
 
     try:

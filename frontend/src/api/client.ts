@@ -19,5 +19,9 @@ apiClient.interceptors.request.use((config) => {
 });
 
 // Backend hazır olmadığında arayüzü test edebilmek için mock modu.
-// Backend ayağa kalktığında .env içinde VITE_USE_MOCK=false yapmanız yeterli.
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
+// Varsayılan KAPALI (gerçek backend'e gider) — VITE_USE_MOCK eksik/tanımsız
+// olsa bile yanlışlıkla mock'a düşülmesin diye "true" DIŞINDA her değer
+// gercek backend'i kullanir (bkz. rapor: eskiden varsayilan ACIK'ti ve .env
+// hic paylasilmayan bir dosya oldugu icin her yeni klon sessizce mock modda
+// kaliyordu).
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";

@@ -1,6 +1,16 @@
-"""Gelistirme ortami icin ornek yarisma/kategori verisi.
+"""Gelistirme ortami icin ornek (SAHTE/DEMO) yarisma/kategori verisi.
 
 Calistirmak icin: python -m app.db.seed
+
+UYARI — bu script SADECE o an baglandigin (DATABASE_URL) veritabanina demo
+kullanici/kategori ekler. DATABASE_URL varsayilan olarak localhost'a isaret
+eder (bkz. app/core/config.py) ve her gelistiricinin kendi makinesinde
+AYRI, izole bir veritabani olur. Bu script'i calistiran her kisi, digerleriyle
+AYNI e-posta/sifreye sahip demo hesaplar gorur ama GERCEK/paylasilmis icerigi
+(gercek kullanicilar, yuklenen sartnameler) GORMEZ — cunku o veri baska bir
+makinenin veritabaninda durur. Gercek/paylasilan veriyi ekibe iletmek icin
+pg_dump/pg_restore kullan (bkz. docs/ARCHITECTURE.md ya da README), bu
+script'i o amacla KULLANMA.
 """
 
 from app.core.security import hash_password

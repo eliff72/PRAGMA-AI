@@ -50,7 +50,10 @@ export async function login(email: string, password: string, demoRole?: Role) {
 export async function register(email: string, password: string, fullName: string, role: Role) {
   if (USE_MOCK) {
     await new Promise((r) => setTimeout(r, 300));
-    const user = MOCK_USERS[role];
+    // Sabit MOCK_USERS personasi degil, gercekten girilen ad/e-posta kullanilir
+    // (bkz. rapor: onceden burada MOCK_USERS[role] donuyordu ve kullanicinin
+    // kendi girdigi isim yerine BASKA bir kullanicinin sabit ismi gorunuyordu).
+    const user: User = { id: `mock-${Date.now()}`, name: fullName, email, role };
     const token = `mock-token-${user.role}`;
     localStorage.setItem("pragma_token", token);
     return { token, user };

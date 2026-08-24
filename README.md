@@ -106,6 +106,7 @@ Docker olmadan yerel geliştirme:
 cd backend
 python -m venv .venv && .venv\Scripts\activate   # Windows
 pip install -r requirements.txt
+alembic upgrade head          # tablolari olustur (bu adim atlanirsa DB bombos kalir)
 uvicorn app.main:app --reload
 
 # Frontend
@@ -113,3 +114,31 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### Önemli: local veritabanı herkeste ayrı ve boştur
+
+`DATABASE_URL` varsayılan olarak `localhost`'a işaret eder (bkz.
+`backend/app/core/config.py`) ve Docker Compose de kendi local Postgres
+container'ını (kendi diskinde, boş bir volume ile) ayağa kaldırır. Bu yüzden
+**her geliştiricinin veritabanı fiziksel olarak ayrı ve başlangıçta boştur** —
+aynı `DATABASE_URL` değeri herkeste farklı bir veritabanına karşılık gelir.
+
+- `python -m app.db.seed` **sadece o an bağlı olduğun boş veritabanına** demo
+  kullanıcı/kategori ekler (bkz. dosyanın içindeki uyarı). Bunu çalıştıran
+  herkes birbirleriyle aynı demo giriş bilgilerine (`content-manager@demo.ai`
+  vb.) sahip olur ama **gerçek/paylaşılan içeriği göremez** — çünkü o veri
+  yalnızca onu yükleyen kişinin kendi local veritabanında durur.
+- Gerçek/paylaşılan veriyi (gerçek kullanıcılar, yüklenmiş şartnameler) ekip
+  arkadaşlarına iletmek için `python -m app.db.seed` **kullanılmaz**; bunun
+  yerine veritabanını dışa aktarıp (`pg_dump`) paylaşın:
+
+  ```bash
+  # Veriyi export eden taraf (gerçek veriye sahip makine):
+  pg_dump -h localhost -U pragma -d pragma_ai -Fc -f pragma_ai.dump
+
+  # Veriyi içeri alan taraf (kendi boş local DB'sine):
+  pg_restore -h localhost -U pragma -d pragma_ai --clean --if-exists pragma_ai.dump
+  ```
+
+  `pragma_ai.dump` dosyasını **git'e commit etmeyin** — gerçek kullanıcı
+  verisi içerir; Slack/Drive gibi git-dışı bir kanaldan paylaşın.
