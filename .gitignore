@@ -39,3 +39,9 @@ Thumbs.db
 
 # --- Logs ---
 *.log
+
+# --- Yerel/gecici, proje kod tabaninin parcasi degil ---
+/pragma-frontend-incele/
+/PRAGMA-AI-durum-raporu.pdf
+/PRAGMA-AI-eksikler-raporu.pdf
+/tall

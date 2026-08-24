@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -7,17 +5,15 @@ from app.db.session import get_db
 from app.models import Competition, Escalation, QALog, QASourceRef, Source, SourceChunk, User
 from app.models.enums import EscalationStatus, SourceStatus, SourceType, UserRole
 from app.rag import vector_store
-from app.rag.ingestion import ingest_document
 from app.rag.pipeline import answer_question
 from app.schemas.competition import CompetitionCreate, CompetitionRead
 from app.schemas.qa import AskRequest, AskResponse, SourceCitationRead
 from app.schemas.source import SourceRead, SourceUploadResponse
+from app.services.source_ingestion import store_and_ingest_source
 
 from .deps import require_role
 
 router = APIRouter(prefix="/competitions", tags=["competitions"])
-
-UPLOAD_DIR = Path("app/data/uploads")
 
 
 def _get_competition_or_404(db: Session, slug: str) -> Competition:
@@ -47,6 +43,7 @@ def _to_source_read(source: Source, uploaded_by_name: str) -> SourceRead:
         version=source.version,
         uploaded_by=uploaded_by_name,
         uploaded_at=source.uploaded_at,
+        source_url=source.source_url,
     )
 
 
@@ -83,43 +80,20 @@ def upload_source(
     resolved_title = title or title_qs or file.filename
 
     competition = _get_competition_or_404(db, slug)
-    uploader = current_user
 
-    competition_dir = UPLOAD_DIR / slug
-    competition_dir.mkdir(parents=True, exist_ok=True)
-    file_path = competition_dir / file.filename
-    file_path.write_bytes(file.file.read())
-
-    source = Source(
+    source = store_and_ingest_source(
+        db,
         competition_id=competition.id,
+        competition_slug=slug,
+        filename=file.filename,
+        file_bytes=file.file.read(),
         title=resolved_title,
         source_type=source_type,
-        status=SourceStatus.ACTIVE,
-        file_path=str(file_path),
-        uploaded_by_id=uploader.id,
-    )
-    db.add(source)
-    db.flush()  # source.id lazim (henuz commit etme — ingestion basarisiz olursa kayit kalmasin)
-
-    chunks = ingest_document(
-        file_path=str(file_path),
-        competition_slug=slug,
-        source_id=str(source.id),
-        source_title=source.title,
+        version=1,
+        uploaded_by_id=current_user.id,
     )
 
-    for chunk in chunks:
-        db.add(
-            SourceChunk(
-                source_id=source.id,
-                chunk_index=chunk["chunk_index"],
-                content=chunk["content"],
-                chroma_vector_id=chunk["chroma_vector_id"],
-            )
-        )
-    db.commit()
-
-    return SourceUploadResponse(source_id=source.id, title=source.title, chunk_count=len(chunks))
+    return SourceUploadResponse(source_id=source.id, title=source.title, chunk_count=len(source.chunks))
 
 
 @router.get("/{slug}/sources", response_model=list[SourceRead])

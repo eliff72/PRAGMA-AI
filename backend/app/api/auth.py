@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.roles import to_frontend_role
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models import User
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserRead
+from app.schemas.auth import FrontendUser, LoginRequest, RegisterRequest, TokenResponse, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -35,4 +36,10 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Kullanici pasif durumda")
 
     token = create_access_token(subject=str(user.id), email=user.email, role=user.role.value)
-    return TokenResponse(access_token=token)
+    frontend_user = FrontendUser(
+        id=str(user.id),
+        name=user.full_name,
+        email=user.email,
+        role=to_frontend_role(user.role),
+    )
+    return TokenResponse(access_token=token, token=token, user=frontend_user)
