@@ -1,16 +1,17 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models import Competition, Escalation, QALog, QASourceRef, Source, SourceChunk, User
 from app.models.enums import EscalationStatus, SourceStatus, SourceType, UserRole
+from app.rag import vector_store
 from app.rag.ingestion import ingest_document
 from app.rag.pipeline import answer_question
 from app.schemas.competition import CompetitionCreate, CompetitionRead
 from app.schemas.qa import AskRequest, AskResponse, SourceCitationRead
-from app.schemas.source import SourceUploadResponse
+from app.schemas.source import SourceRead, SourceUploadResponse
 
 from .deps import require_role
 
@@ -24,6 +25,29 @@ def _get_competition_or_404(db: Session, slug: str) -> Competition:
     if not competition:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Yarışma bulunamadı: {slug}")
     return competition
+
+
+def _get_source_or_404(db: Session, competition_id: int, source_id: int) -> Source:
+    source = (
+        db.query(Source)
+        .filter(Source.id == source_id, Source.competition_id == competition_id)
+        .first()
+    )
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Kaynak bulunamadı: {source_id}")
+    return source
+
+
+def _to_source_read(source: Source, uploaded_by_name: str) -> SourceRead:
+    return SourceRead(
+        id=source.id,
+        title=source.title,
+        source_type=source.source_type.value,
+        status=source.status.value,
+        version=source.version,
+        uploaded_by=uploaded_by_name,
+        uploaded_at=source.uploaded_at,
+    )
 
 
 @router.get("", response_model=list[CompetitionRead])
@@ -48,10 +72,16 @@ def upload_source(
     slug: str,
     file: UploadFile = File(...),
     title: str | None = Form(None),
+    title_qs: str | None = Query(None, alias="title"),
     source_type: SourceType = Form(SourceType.SPECIFICATION),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.CONTENT_MANAGER)),
 ) -> SourceUploadResponse:
+    # feature/frontend-admin title'i multipart form alani degil, query string
+    # parametresi olarak gonderiyor (bilinen sorun, bkz. docs/API_CONTRACT.md) —
+    # bu yuzden her iki yoldan da kabul ediyoruz.
+    resolved_title = title or title_qs or file.filename
+
     competition = _get_competition_or_404(db, slug)
     uploader = current_user
 
@@ -62,7 +92,7 @@ def upload_source(
 
     source = Source(
         competition_id=competition.id,
-        title=title or file.filename,
+        title=resolved_title,
         source_type=source_type,
         status=SourceStatus.ACTIVE,
         file_path=str(file_path),
@@ -90,6 +120,43 @@ def upload_source(
     db.commit()
 
     return SourceUploadResponse(source_id=source.id, title=source.title, chunk_count=len(chunks))
+
+
+@router.get("/{slug}/sources", response_model=list[SourceRead])
+def list_sources(
+    slug: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.CONTENT_MANAGER, UserRole.SYSTEM_ADMIN)),
+) -> list[SourceRead]:
+    competition = _get_competition_or_404(db, slug)
+    rows = (
+        db.query(Source, User.full_name)
+        .join(User, Source.uploaded_by_id == User.id)
+        .filter(Source.competition_id == competition.id)
+        .order_by(Source.id)
+        .all()
+    )
+    return [_to_source_read(source, full_name) for source, full_name in rows]
+
+
+@router.post("/{slug}/sources/{source_id}/deactivate", response_model=SourceRead)
+def deactivate_source(
+    slug: str,
+    source_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.CONTENT_MANAGER, UserRole.SYSTEM_ADMIN)),
+) -> SourceRead:
+    competition = _get_competition_or_404(db, slug)
+    source = _get_source_or_404(db, competition.id, source_id)
+
+    source.status = SourceStatus.INACTIVE
+    db.commit()
+    db.refresh(source)
+
+    vector_store.deactivate_source(slug, str(source.id))
+
+    uploader = db.query(User).filter(User.id == source.uploaded_by_id).first()
+    return _to_source_read(source, uploader.full_name if uploader else "")
 
 
 @router.post("/{slug}/ask", response_model=AskResponse, status_code=status.HTTP_201_CREATED)
