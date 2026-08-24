@@ -73,7 +73,36 @@ def ask_question_flat(
             durum="cevaplandi",
         )
 
-    result = answer_question(competition.slug, payload.question)
+    try:
+        result = answer_question(competition.slug, payload.question)
+    except Exception:
+        fallback_message = (
+            "Sistemimiz şu an yoğun. Sorunuzu canlı destek ekibimize ilettim, "
+            "en kısa sürede dönüş yapacağız."
+        )
+        qa_log = QALog(
+            user_id=current_user.id,
+            competition_id=competition.id,
+            question=payload.question,
+            answer=fallback_message,
+            confidence_score=0.0,
+            confidence_level=None,
+            was_escalated=False,
+        )
+        db.add(qa_log)
+        db.commit()
+        db.refresh(qa_log)
+        return ChatMessageOut(
+            id=str(qa_log.id),
+            role="assistant",
+            content=fallback_message,
+            sources=[],
+            createdAt=qa_log.created_at.isoformat(),
+            confidenceLevel=None,
+            durum="kanit_bulunamadi",
+            mesaj=fallback_message,
+            destegeYonlendirilebilir=True,
+        )
 
     qa_log = QALog(
         user_id=current_user.id,
