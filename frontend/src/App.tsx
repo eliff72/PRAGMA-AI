@@ -1,17 +1,24 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import MockDataBanner from "./components/MockDataBanner";
+import CompetitionSelectPage from "./pages/user/CompetitionSelectPage";
+import ChatPage from "./pages/user/ChatPage";
 import LoginPage from "./pages/admin/LoginPage";
 import AdminLayout from "./pages/admin/AdminLayout";
 import SourcesPage from "./pages/admin/SourcesPage";
 import EscalationsPage from "./pages/admin/EscalationsPage";
 import DashboardPage from "./pages/admin/DashboardPage";
 
-// NOT: Yarismaci sayfalari feature/frontend-user branch'inde "/" ve "/sorular/*" altinda eklenecek.
 export default function App() {
   return (
     <AuthProvider>
+      <MockDataBanner />
       <Routes>
+        <Route path="/" element={<CompetitionSelectPage />} />
+        <Route path="/sorular" element={<CompetitionSelectPage />} />
+        <Route path="/sorular/:competitionSlug" element={<ChatPage />} />
+
         <Route path="/admin/login" element={<LoginPage />} />
 
         <Route path="/admin" element={<ProtectedRoute />}>
