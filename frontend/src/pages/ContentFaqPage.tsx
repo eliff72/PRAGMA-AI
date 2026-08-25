@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { fetchCompetitions } from "../api/resources";
-import { fetchFaq, createManualFaqEntry } from "../api/faq";
+import { fetchFaq, createManualFaqEntry, deactivateFaqEntry } from "../api/faq";
 import type { Competition, FAQEntry } from "../types";
 
 export function ContentFaqPage() {
@@ -42,6 +42,11 @@ export function ContentFaqPage() {
     }, 250);
     return () => clearTimeout(debounce);
   }, [categoryId, faqSearch]);
+
+  async function handleDeactivate(faqId: string) {
+    await deactivateFaqEntry(faqId);
+    reloadFaq();
+  }
 
   async function handleAddQuestion(e: React.FormEvent) {
     e.preventDefault();
@@ -165,8 +170,30 @@ export function ContentFaqPage() {
             )}
             {!isFaqLoading &&
               faqEntries.map((entry) => (
-                <div key={entry.id} className="rounded-lg border border-[var(--color-border)] bg-white p-4">
-                  <p className="text-sm font-medium text-[var(--color-ink-900)]">{entry.question}</p>
+                <div
+                  key={entry.id}
+                  className={`rounded-lg border p-4 ${
+                    entry.isActive
+                      ? "border-[var(--color-border)] bg-white"
+                      : "border-[var(--color-border)] bg-[var(--color-bg-panel)] opacity-60"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium text-[var(--color-ink-900)]">{entry.question}</p>
+                    {entry.isActive ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeactivate(entry.id)}
+                        className="shrink-0 rounded-md border border-[var(--color-border)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink-700)] hover:bg-white"
+                      >
+                        Pasife Al
+                      </button>
+                    ) : (
+                      <span className="shrink-0 rounded-md bg-[var(--color-border)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink-500)]">
+                        Pasif
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-sm text-[var(--color-ink-700)]">{entry.answer}</p>
                   <p className="mt-2 font-mono text-[11px] text-[var(--color-ink-500)]">
                     {entry.competitionName} · kaynak: {entry.source} · {entry.createdAt}

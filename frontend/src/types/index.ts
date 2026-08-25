@@ -77,6 +77,7 @@ export interface FAQEntry {
   answer: string;
   source: string;
   createdAt: string;
+  isActive: boolean;
 }
 
 export interface ConfidenceDistribution {

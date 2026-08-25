@@ -23,6 +23,10 @@ class FAQEntry(Base):
             "confidence_level IN ('verified', 'pending_review')",
             name="ck_faq_entries_confidence_level",
         ),
+        CheckConstraint(
+            "status IN ('active', 'inactive')",
+            name="ck_faq_entries_status",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -42,3 +46,6 @@ class FAQEntry(Base):
     # olarak boyle bir gereksiz scope filtresiydi).
     source_type: Mapped[str] = mapped_column(Text, server_default="auto_from_chat")
     confidence_level: Mapped[str] = mapped_column(Text, server_default="pending_review")
+    # PRD madde 2 (icerik yoneticisi gecerliligi yonetir) SSS kayitlari icin de
+    # gecerli — pasife alinan bir SSS artik eslesmemeli (bkz. find_matching_faq).
+    status: Mapped[str] = mapped_column(Text, server_default="active")

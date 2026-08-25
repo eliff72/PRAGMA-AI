@@ -29,3 +29,10 @@ export async function createManualFaqEntry(
   });
   return data;
 }
+
+/** Backend: PATCH /api/support/faq/{id}/deactivate — SSS kaydini pasife alir,
+ * find_matching_faq() bir sonraki soruda bu kaydi artik dondurmez. */
+export async function deactivateFaqEntry(faqId: string): Promise<FAQEntry> {
+  const { data } = await apiClient.patch<FAQEntry>(`/api/support/faq/${faqId}/deactivate`);
+  return data;
+}

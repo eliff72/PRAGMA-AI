@@ -95,7 +95,14 @@ def find_matching_faq(db: Session, competition_id: int, question: str) -> FAQEnt
     kategoride destek ekibinin daha once cevapladigi bir soruyla anlamca
     eslesiyorsa, saklanan cevabi dondurur; yoksa None doner ve cagiran taraf
     sartname/RAG akisina duser."""
-    faqs = db.query(FAQEntry).filter(FAQEntry.competition_id == competition_id).all()
+    # KRITIK: status='active' filtresi competition_id'nin YANINA eklendi,
+    # YERINE degil — eslesme scope'u hala SADECE bu iki alanla siniriar
+    # (bkz. rapor: onceki bug'in kok nedeni gereksiz bir scope filtresiydi).
+    faqs = (
+        db.query(FAQEntry)
+        .filter(FAQEntry.competition_id == competition_id, FAQEntry.status == "active")
+        .all()
+    )
     if not faqs:
         return None
 

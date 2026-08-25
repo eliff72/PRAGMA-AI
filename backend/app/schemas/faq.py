@@ -11,6 +11,7 @@ class FAQEntryRead(BaseModel):
     answer: str
     source: str = "destek_ekibi"
     createdAt: datetime
+    isActive: bool = True
 
 
 class FAQManualEntryCreate(BaseModel):

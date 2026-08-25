@@ -38,9 +38,38 @@ def search_faq(
             question=entry.question,
             answer=entry.answer,
             createdAt=entry.created_at,
+            isActive=entry.status == "active",
         )
         for entry, competition in rows
     ]
+
+
+@router.patch("/faq/{faq_id}/deactivate", response_model=FAQEntryRead)
+def deactivate_faq_entry(
+    faq_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.CONTENT_MANAGER, UserRole.SYSTEM_ADMIN)),
+) -> FAQEntryRead:
+    """SSS kaydini pasife alir — find_matching_faq() bir sonraki soruda bu
+    kaydi artik dondurmez (bkz. app/rag/faq_matching.py status filtresi)."""
+    entry = db.query(FAQEntry).filter(FAQEntry.id == faq_id).first()
+    if not entry:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"SSS kaydı bulunamadı: {faq_id}")
+
+    entry.status = "inactive"
+    db.commit()
+    db.refresh(entry)
+
+    competition = db.query(Competition).filter(Competition.id == entry.competition_id).first()
+    return FAQEntryRead(
+        id=entry.id,
+        competitionId=entry.competition_id,
+        competitionName=competition.name if competition else "",
+        question=entry.question,
+        answer=entry.answer,
+        createdAt=entry.created_at,
+        isActive=False,
+    )
 
 
 @router.post("/faq/manual-entry", response_model=FAQEntryRead, status_code=status.HTTP_201_CREATED)
