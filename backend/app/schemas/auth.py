@@ -4,10 +4,17 @@ from app.models.enums import UserRole
 
 
 class RegisterRequest(BaseModel):
+    """Public /auth/register icin — role KASITLI OLARAK YOK: bu endpoint'ten
+    acilan her hesap sunucu tarafinda daima UserRole.COMPETITOR olur (bkz.
+    app/api/auth.py > register). content_manager/support_agent/system_admin
+    hesaplari SADECE admin-only POST /api/admin/users ile acilabilir (bkz.
+    AdminCreateUserRequest) — client'in burada rol secme SECENEGI bile yok,
+    sadece frontend'de gizlenmis degil (guvenlik acigi: onceden payload.role
+    dogrudan kabul ediliyordu, kim isterse curl ile system_admin acabilirdi)."""
+
     email: EmailStr
     password: str
     full_name: str
-    role: UserRole
 
 
 class LoginRequest(BaseModel):

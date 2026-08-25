@@ -5,6 +5,7 @@ from app.core.roles import to_frontend_role
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models import User
+from app.models.enums import UserRole
 from app.schemas.auth import FrontendUser, LoginRequest, RegisterRequest, TokenResponse, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -12,6 +13,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
+    """GUVENLIK: role burada payload'dan ALINMAZ — RegisterRequest'te zaten
+    boyle bir alan yok. Bu public endpoint'ten acilan her hesap daima
+    UserRole.COMPETITOR olur; diger roller icin bkz. app/api/admin.py."""
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu e-posta ile zaten bir kullanici kayitli")
 
@@ -19,7 +23,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
         email=payload.email,
         full_name=payload.full_name,
         hashed_password=hash_password(payload.password),
-        role=payload.role,
+        role=UserRole.COMPETITOR,
     )
     db.add(user)
     db.commit()
