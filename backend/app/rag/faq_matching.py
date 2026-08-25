@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from difflib import SequenceMatcher
 
 import google.generativeai as genai
@@ -15,18 +16,51 @@ logger = logging.getLogger(__name__)
 # benzerligi esigi. LLM'in yakalayacagi genis parafrazlari yakalamaz ama
 # neredeyse-ayni/cok benzer sorularin (asil raporlanan sikayet senaryosu)
 # API kesintisinde bile bulunmasini saglar.
-FALLBACK_SIMILARITY_THRESHOLD = 0.55
+#
+# Karakter-bazli SequenceMatcher.ratio() TEK BASINA yeterli degil: ortak
+# cumle kaliplari ("Bu yarismanin ___ nedir/kimlerdir?") ratio'yu icerik
+# kelimelerinden bagimsiz sekilde sisiriyor (bkz. rapor — "gizli denetim
+# kodu nedir?" sorusu yanlislikla "paydaslari kimlerdir?" ile eslesti,
+# cr=0.622). Ayni sekilde kelime-govdesi ortusmesi de tek basina yeterli
+# degil (havuz-ici FARKLI sorular arasinda tk=0.333'e kadar cikabiliyor).
+# Esikler, projedeki 9 GERCEK FAQ kaydiyla (SADECE ayni competition_id
+# icindeki, yani pratikte gercekten karsilastirilacak ciftlerle) olculmus
+# en yuksek yanlis-pozitif skorunun (cr=0.622, tk=0.333) GUVENLI MARJLA
+# uzerinde tutuluyor — bkz. scratchpad/tune_v3.py.
+_CHAR_RATIO_THRESHOLD = 0.75
+_TOKEN_OVERLAP_THRESHOLD = 0.65
+
+_STOPWORDS = {"bu", "su", "o", "ve", "ile", "ki", "mi", "mu", "de", "da", "icin", "ne", "nedir"}
+
+
+def _normalized_tokens(text: str) -> set[str]:
+    words = re.findall(r"\w+", text.lower())
+    return {w[:5] for w in words if w not in _STOPWORDS and len(w) > 2}
+
+
+def _token_overlap_ratio(a: str, b: str) -> float:
+    tokens_a, tokens_b = _normalized_tokens(a), _normalized_tokens(b)
+    if not tokens_a or not tokens_b:
+        return 0.0
+    return len(tokens_a & tokens_b) / min(len(tokens_a), len(tokens_b))
+
+
+def _match_score(a: str, b: str) -> float:
+    """Esik gecerse siralama icin skor, gecmezse 0.0 (asla None degil, gecen
+    adaylar arasinda en iyisini secebilmek icin)."""
+    char_ratio = SequenceMatcher(None, a.lower(), b.lower()).ratio()
+    token_ratio = _token_overlap_ratio(a, b)
+    passes = char_ratio >= _CHAR_RATIO_THRESHOLD or token_ratio >= _TOKEN_OVERLAP_THRESHOLD
+    return max(char_ratio, token_ratio) if passes else 0.0
 
 
 def _text_similarity_fallback(question: str, faqs: list[FAQEntry]) -> FAQEntry | None:
-    best_entry, best_ratio = None, 0.0
+    best_entry, best_score = None, 0.0
     for entry in faqs:
-        ratio = SequenceMatcher(None, question.lower(), entry.question.lower()).ratio()
-        if ratio > best_ratio:
-            best_entry, best_ratio = entry, ratio
-    if best_entry is not None and best_ratio >= FALLBACK_SIMILARITY_THRESHOLD:
-        return best_entry
-    return None
+        score = _match_score(question, entry.question)
+        if score > best_score:
+            best_entry, best_score = entry, score
+    return best_entry
 
 settings = get_settings()
 genai.configure(api_key=settings.gemini_api_key)
