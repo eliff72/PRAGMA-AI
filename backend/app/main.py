@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.admin import router as admin_router
 from app.api.analytics import router as analytics_router
 from app.api.auth import router as auth_router
 from app.api.competitions import router as competitions_router
@@ -53,3 +54,4 @@ app.include_router(metrics_router, prefix="/api")
 app.include_router(questions_router)
 app.include_router(resources_router)
 app.include_router(analytics_router)
+app.include_router(admin_router)

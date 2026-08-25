@@ -21,7 +21,10 @@ const NAV_BY_ROLE: Record<Role, { to: string; label: string }[]> = {
     { to: "/content/soru-havuzu", label: "Soru Havuzu" },
   ],
   destek: [{ to: "/destek", label: "Yönlendirilen Sorular" }],
-  admin: [{ to: "/panel", label: "Analitik Panel" }],
+  admin: [
+    { to: "/panel", label: "Analitik Panel" },
+    { to: "/panel/kullanicilar", label: "Kullanıcı Oluştur" },
+  ],
 };
 
 export function AppShell({ children }: { children: ReactNode }) {

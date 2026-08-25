@@ -10,6 +10,7 @@ import { ContentUploadPage } from "./pages/ContentUploadPage";
 import { ContentFaqPage } from "./pages/ContentFaqPage";
 import { SupportQueuePage } from "./pages/SupportQueuePage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
+import { AdminUsersPage } from "./pages/AdminUsersPage";
 
 export default function App() {
   return (
@@ -78,6 +79,15 @@ export default function App() {
             element={
               <ProtectedRoute allow={["admin"]}>
                 <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/panel/kullanicilar"
+            element={
+              <ProtectedRoute allow={["admin"]}>
+                <AdminUsersPage />
               </ProtectedRoute>
             }
           />

@@ -38,3 +38,14 @@ class UserRead(BaseModel):
     email: str
     full_name: str
     role: UserRole
+
+
+class AdminCreateUserRequest(BaseModel):
+    """Sistem Yoneticisi panelinden rol secilerek kullanici olusturma (bkz.
+    app/api/admin.py) — public RegisterRequest'ten farki: role SERBEST secilebilir
+    (public kayit formu sadece competitor acar, bkz. app/api/auth.py)."""
+
+    email: EmailStr
+    password: str
+    full_name: str
+    role: UserRole

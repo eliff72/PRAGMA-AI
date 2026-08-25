@@ -5,7 +5,6 @@ import type { Role } from "../types";
 import { ROLE_OPTIONS } from "../constants/roles";
 
 export function LoginPage() {
-  const [tab, setTab] = useState<"eposta" | "telefon">("eposta");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -55,41 +54,16 @@ export function LoginPage() {
             </Link>
           </div>
 
-          <div className="flex gap-1 rounded-lg bg-[var(--color-flag-50)] p-1 text-sm">
-            <button
-              type="button"
-              onClick={() => setTab("eposta")}
-              className={`flex-1 rounded-md py-2 font-semibold transition-colors ${
-                tab === "eposta"
-                  ? "bg-[var(--color-flag-600)] text-white"
-                  : "text-[var(--color-flag-700)] hover:bg-white/50"
-              }`}
-            >
-              E-Posta ile Giris
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("telefon")}
-              className={`flex-1 rounded-md py-2 font-semibold transition-colors ${
-                tab === "telefon"
-                  ? "bg-[var(--color-flag-600)] text-white"
-                  : "text-[var(--color-flag-700)] hover:bg-white/50"
-              }`}
-            >
-              Telefon ile Giris
-            </button>
-          </div>
-
           <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-bold text-[var(--color-ink-900)]">
-                {tab === "eposta" ? "E-Posta" : "Telefon Numarasi"}
+                E-Posta
               </label>
               <input
-                type={tab === "eposta" ? "email" : "tel"}
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={tab === "eposta" ? "E-posta adresi" : "05xx xxx xx xx"}
+                placeholder="E-posta adresi"
                 className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-panel)] px-3 py-2.5 text-sm text-[var(--color-ink-900)] outline-none transition-colors placeholder:text-[var(--color-ink-300)] focus:border-[var(--color-navy-700)]"
               />
             </div>
