@@ -11,3 +11,9 @@ class FAQEntryRead(BaseModel):
     answer: str
     source: str = "destek_ekibi"
     createdAt: datetime
+
+
+class FAQManualEntryCreate(BaseModel):
+    competition_id: int
+    question: str
+    answer: str

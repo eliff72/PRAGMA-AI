@@ -13,3 +13,19 @@ export async function fetchFaq(kategoriId?: string, arama?: string): Promise<FAQ
   });
   return data;
 }
+
+/** Backend: POST /api/support/faq/manual-entry — icerik yoneticisinin
+ * destek ekibinden bir escalation gecmeden dogrudan soru havuzuna
+ * soru-cevap eklemesi. */
+export async function createManualFaqEntry(
+  competitionId: string,
+  question: string,
+  answer: string
+): Promise<FAQEntry> {
+  const { data } = await apiClient.post<FAQEntry>("/api/support/faq/manual-entry", {
+    competition_id: Number(competitionId),
+    question,
+    answer,
+  });
+  return data;
+}
