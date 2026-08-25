@@ -94,6 +94,8 @@ iskelet/özellikleri içerir:
 ```bash
 cp .env.example .env      # değerleri doldurun (özellikle GEMINI_API_KEY)
 docker compose up --build
+docker compose exec backend alembic upgrade head   # tablolari olustur (atlanirsa DB bomboş kalır)
+docker compose exec backend python -m app.db.seed  # demo kullanicilar + baslangic kategorileri
 ```
 
 - Backend: http://localhost:8000/health — Swagger: http://localhost:8000/docs
