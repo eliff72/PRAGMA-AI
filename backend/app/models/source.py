@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -11,6 +11,14 @@ class Source(Base):
     """Yüklenen bir belge (şartname/kılavuz/SSS) — bir yarışmaya bağlıdır."""
 
     __tablename__ = "sources"
+    __table_args__ = (
+        # Bir kaynak hem "yerine biri gecti" (superseded_by_id dolu) hem
+        # "hala aktif" olamaz — bkz. alembic/versions/9a5361ed9151_*.py
+        CheckConstraint(
+            "NOT (status = 'active' AND superseded_by_id IS NOT NULL)",
+            name="ck_sources_active_not_superseded",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     competition_id: Mapped[int] = mapped_column(ForeignKey("competitions.id"))
