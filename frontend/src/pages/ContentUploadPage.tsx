@@ -96,13 +96,27 @@ export function ContentUploadPage() {
         await uploadDocument(uploadFile, targetCategoryId, uploadVersion);
       } catch (uploadErr) {
         // Dosya yukleme (ingest) basarisiz oldu: az once acilan kategoriyi
-        // geri al (rollback) — kaynaksiz/bos kategori kalmasin.
+        // geri al (rollback) — kaynaksiz/bos kategori kalmasin. Kullaniciya
+        // NEDEN kategorinin de kaybolduğunu acikca soylemek icin, rollback'in
+        // basarili olup olmadigina gore ayri bir mesaj kuruyoruz (genel
+        // handleUploadSubmit catch'ine dusmesini engelliyoruz, bkz. rapor).
         if (createdCompetitionId) {
+          const uploadDetail = axios.isAxiosError(uploadErr) ? uploadErr.response?.data?.detail : undefined;
+          const reason = typeof uploadDetail === "string" ? uploadDetail : "dosya bozuk olabilir veya desteklenmeyen bir formatta olabilir";
           try {
             await deleteCompetition(createdCompetitionId);
+            setUploadError(
+              `Kaynak yüklenemedi (${reason}), bu yüzden "${newCatName.trim()}" kategorisi de oluşturulmadı. ` +
+                "Lütfen geçerli bir dosyayla tekrar deneyin."
+            );
           } catch (rollbackErr) {
             console.error("Rollback basarisiz — kategori manuel kontrol edilmeli:", rollbackErr);
+            setUploadError(
+              `Kaynak yüklenemedi (${reason}) ve "${newCatName.trim()}" kategorisi geri alınamadı — ` +
+                "kategori kaynaksız kalmış olabilir, lütfen sistem yöneticisine bildirin."
+            );
           }
+          return;
         }
         throw uploadErr;
       }
