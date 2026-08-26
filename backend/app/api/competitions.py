@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models import Competition, Escalation, QALog, QASourceRef, Source, SourceChunk, User
+from app.models import Competition, Escalation, FAQEntry, QALog, QASourceRef, Source, SourceChunk, User
 from app.models.enums import EscalationStatus, SourceStatus, SourceType, UserRole
 from app.rag import vector_store
 from app.rag.pipeline import answer_question
@@ -53,7 +53,11 @@ def list_competitions(db: Session = Depends(get_db)) -> list[Competition]:
 
 
 @router.post("", response_model=CompetitionRead, status_code=status.HTTP_201_CREATED)
-def create_competition(payload: CompetitionCreate, db: Session = Depends(get_db)) -> Competition:
+def create_competition(
+    payload: CompetitionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.CONTENT_MANAGER, UserRole.SYSTEM_ADMIN)),
+) -> Competition:
     if db.query(Competition).filter(Competition.slug == payload.slug).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Bu slug zaten kullanımda")
 
@@ -62,6 +66,42 @@ def create_competition(payload: CompetitionCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(competition)
     return competition
+
+
+@router.delete("/{competition_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_competition(
+    competition_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.CONTENT_MANAGER, UserRole.SYSTEM_ADMIN)),
+) -> None:
+    """Kalici silme. BOLUM: 'Yeni Kategori Ekle' artik kaynak yukleme akisinin
+    bir parcasi — once kategori olusturulur, sonra dosya yuklenir; dosya
+    yukleme (ingest) basarisiz olursa frontend bu endpoint'i cagirarak icinde
+    hic kaynak olmayan yarim kalmis kategoriyi geri alir (rollback), boylece
+    yarismaciya kaynaksiz/bos bir kategori hic gorunmez (bkz. rapor).
+
+    Bagli kayit varsa (sources/qa_logs/faq_entries) sessizce silmek yerine
+    409 ile aciklayici hata donuyoruz — delete_user'daki ayni desen."""
+    competition = db.query(Competition).filter(Competition.id == competition_id).first()
+    if not competition:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Yarışma bulunamadı: {competition_id}")
+
+    blockers: list[str] = []
+    if db.query(Source).filter(Source.competition_id == competition_id).count():
+        blockers.append("yüklenmiş kaynaklar (sources)")
+    if db.query(QALog).filter(QALog.competition_id == competition_id).count():
+        blockers.append("soru geçmişi (qa_logs)")
+    if db.query(FAQEntry).filter(FAQEntry.competition_id == competition_id).count():
+        blockers.append("SSS kayıtları (faq_entries)")
+
+    if blockers:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Bu kategori silinemez, bağlı kayıtlar var: {', '.join(blockers)}.",
+        )
+
+    db.delete(competition)
+    db.commit()
 
 
 @router.post("/{slug}/sources/upload", response_model=SourceUploadResponse, status_code=status.HTTP_201_CREATED)

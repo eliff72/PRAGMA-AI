@@ -9,6 +9,30 @@ export async function fetchCompetitions(): Promise<Competition[]> {
   return data;
 }
 
+/** Backend: POST /competitions  { name, slug, description } -> CompetitionRead.
+ * CONTENT_MANAGER veya SYSTEM_ADMIN gerektirir (bkz. app/api/competitions.py). */
+export async function createCompetition(
+  name: string,
+  slug: string,
+  description: string
+): Promise<Competition> {
+  if (USE_MOCK) {
+    const comp: Competition = { id: crypto.randomUUID(), name, description };
+    mockCompetitions.unshift(comp);
+    return comp;
+  }
+  const { data } = await apiClient.post("/competitions", { name, slug, description: description || null });
+  return { id: String(data.id), name: data.name, description: data.description ?? "" };
+}
+
+/** Backend: DELETE /competitions/{id} — bagli kayit yoksa kalici siler.
+ * "Yeni Kategori Ekle" akisinda dosya yukleme basarisiz olursa, icinde hic
+ * kaynak olmayan kategoriyi geri almak (rollback) icin kullanilir. */
+export async function deleteCompetition(id: string): Promise<void> {
+  if (USE_MOCK) return;
+  await apiClient.delete(`/competitions/${id}`);
+}
+
 /** Backend: GET /api/resources */
 export async function fetchDocuments(): Promise<KnowledgeDocument[]> {
   if (USE_MOCK) return mockDocuments;

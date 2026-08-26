@@ -28,3 +28,13 @@ export function matchesSearch(text: string, query: string): boolean {
   if (!query.trim()) return true;
   return normalizeTr(text).includes(normalizeTr(query));
 }
+
+/** Yarışma adından URL-güvenli slug türetir (ör. "Teknofest İHA" -> "teknofest-iha").
+ * Sadece varsayılan değer üretir; kullanıcı formda serbestçe düzenleyebilir. */
+export function slugify(text: string): string {
+  return normalizeTr(text)
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/[\s-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
