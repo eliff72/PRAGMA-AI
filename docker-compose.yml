@@ -17,6 +17,9 @@ services:
 
   backend:
     build: ./backend
+    # Prod imajinda --reload YOK (bkz. backend/Dockerfile); yerel gelistirmede
+    # hot-reload'u burada geri aciyoruz.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://pragma:pragma@postgres:5432/pragma_ai

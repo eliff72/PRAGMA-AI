@@ -1,0 +1,64 @@
+# PRAGMA-AI — Render Blueprint (backend + PostgreSQL)
+#
+# ONEMLI: Render blueprint'leri deponun KOKUNDE aranir. Dagitimdan once:
+#     cp backend/render.yaml render.yaml
+# (ya da Render panelinde "Blueprint" olustururken bu dosyayi kok dizine tasi.)
+# Icindeki tum yollar depo kokune goredir; dosya nereye kopyalanirsa
+# kopyalansin `dockerContext: backend` gecerli kalir.
+
+databases:
+  - name: pragma-ai-db
+    databaseName: pragma_ai
+    user: pragma
+    plan: free
+
+services:
+  - type: web
+    name: pragma-ai-backend
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    # Tablolari olustur, sonra sunucuyu baslat. Seed'i (demo kullanicilar)
+    # ilk dagitimdan sonra Render Shell'den elle calistirin:
+    #   python -m app.db.seed && python -m app.db.seed_teknofest_2026
+    dockerCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      # Render'in urettigi connection string 'postgresql://' ile baslar;
+      # SQLAlchemy + psycopg3 icin 'postgresql+psycopg://' gerekir. Deger
+      # panelde otomatik dolar, prefix'i elle duzeltmeyi UNUTMAYIN.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pragma-ai-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      # Production frontend domain(ler)i — virgulle ayirin. "*" birakilirsa
+      # tum origin'lere izin verilir (jury demosu icin pratik).
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: GEMINI_API_KEY
+        sync: false          # gizli: Render panelinden elle girilir
+      - key: GEMINI_CHAT_MODEL
+        value: gemini-3.6-flash
+      - key: GEMINI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      # Render free plan'da disk kalici DEGIL — her deploy'da vektor indeksi
+      # sifirlanir ve kaynaklarin yeniden yuklenmesi gerekir. Kalicilik icin
+      # asagidaki disk blogunu (ucretli plan) acin.
+      - key: CHROMA_PERSIST_DIR
+        value: /var/data/chroma
+      - key: RAG_TOP_K
+        value: "5"
+      - key: RAG_MIN_SIMILARITY
+        value: "0.35"
+    # disk:
+    #   name: chroma-data
+    #   mountPath: /var/data
+    #   sizeGB: 1

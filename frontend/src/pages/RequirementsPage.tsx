@@ -8,10 +8,9 @@ import type { Competition, KnowledgeDocument } from "../types";
 export function RequirementsPage() {
   const [searchParams] = useSearchParams();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
-  // Sohbet ekranindan "?category=<id>" ile gelinmis olabilir — o zaman
-  // yarismacinin o an konustugu kategori onceden secili gelir. Yoksa ilk
-  // kategori varsayilan olur (bkz. asagidaki fetch sonrasi fallback).
-  const [categoryId, setCategoryId] = useState(searchParams.get("category") ?? "");
+  const [categoryId, setCategoryId] = useState(
+    searchParams.get("category") ?? "",
+  );
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
 
   useEffect(() => {
@@ -19,7 +18,6 @@ export function RequirementsPage() {
       setCompetitions(list);
       setCategoryId((current) => current || (list.length ? list[0].id : ""));
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -43,11 +41,17 @@ export function RequirementsPage() {
         </p>
 
         <div className="mt-4">
-          <CategoryPicker competitions={competitions} value={categoryId} onChange={setCategoryId} />
+          <CategoryPicker
+            competitions={competitions}
+            value={categoryId}
+            onChange={setCategoryId}
+          />
         </div>
 
         {selectedCategory && (
-          <p className="mt-3 text-xs text-[var(--color-ink-500)]">{selectedCategory.description}</p>
+          <p className="mt-3 text-xs text-[var(--color-ink-500)]">
+            {selectedCategory.description}
+          </p>
         )}
 
         <div className="mt-6 space-y-2">
@@ -57,21 +61,27 @@ export function RequirementsPage() {
             </p>
           )}
           {documents.map((doc) => (
-            <div key={doc.id} className="rounded-lg border border-[var(--color-border)] bg-white p-4">
-              <p className="text-sm font-medium text-[var(--color-ink-900)]">{doc.title}</p>
+            <div
+              key={doc.id}
+              className="rounded-lg border border-[var(--color-border)] bg-white p-4"
+            >
+              <p className="text-sm font-medium text-[var(--color-ink-900)]">
+                {doc.title}
+              </p>
               <p className="mt-1 font-mono text-[11px] text-[var(--color-ink-500)]">
                 v{doc.version} · {doc.uploadedAt}
               </p>
-              {doc.sourceUrl && (
-                <a
-                  href={doc.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 inline-block text-xs font-semibold text-[var(--color-navy-700)] underline"
-                >
-                  Şartnameyi Görüntüle →
-                </a>
-              )}
+              <a
+                href={
+                  doc.sourceUrl ||
+                  `http://localhost:8000/api/resources/${doc.id}/download`
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-navy-700)] hover:underline"
+              >
+                <span>📄 Şartnameyi Görüntüle / İndir →</span>
+              </a>
             </div>
           ))}
         </div>

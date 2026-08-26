@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     app_name: str = "PRAGMA-AI"
     environment: str = "development"
 
+    # CORS — virgulle ayrilmis origin listesi ya da "*" (tum origin'lere izin).
+    # Ornek prod degeri:
+    #   CORS_ORIGINS=https://pragma-ai.vercel.app,https://pragma-ai.netlify.app
+    cors_origins: str = "*"
+
     # Database
     database_url: str = "postgresql+psycopg://pragma:pragma@localhost:5432/pragma_ai"
 
@@ -27,6 +32,19 @@ class Settings(BaseSettings):
     chroma_persist_dir: str = "./app/data/chroma"
     rag_top_k: int = 5
     rag_min_similarity: float = 0.35
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """CORS_ORIGINS degerini listeye cevirir.
+
+        "*" (varsayilan) tum origin'lere izin verir — jury demosu / hizli
+        dagitim icin pratik. Production'da acik liste verildiginde yalnizca o
+        domainler kabul edilir.
+        """
+        raw = (self.cors_origins or "").strip()
+        if not raw or raw == "*":
+            return ["*"]
+        return [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
 
 
 @lru_cache

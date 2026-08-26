@@ -20,10 +20,21 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# CORS — yerel gelistirme ve production frontend domainleri.
+# CORS_ORIGINS env degiskeni ile yonetilir (bkz. app/core/config.py):
+#   - tanimsiz / "*"  -> tum origin'lere izin (jury demosu, hizli dagitim)
+#   - virgullu liste   -> yalnizca listelenen domainler
+# NOT: Tarayici spesifikasyonu geregi allow_origins=["*"] ile
+# allow_credentials=True birlikte calismaz (tarayici istegi reddeder).
+# Auth'umuz cookie degil "Authorization: Bearer" header'i kullandigi icin
+# joker modda credentials'i kapatmak arayuzde hicbir seyi bozmaz.
+cors_origins = settings.cors_origin_list
+allow_all_origins = cors_origins == ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # MVP: gelistirme asamasinda serbest, prod'da kisitlanacak
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=not allow_all_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
