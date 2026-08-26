@@ -14,3 +14,9 @@ export const ROLE_TO_BACKEND: Record<Role, string> = {
   destek: "support_agent",
   admin: "system_admin",
 };
+
+/** ROLE_TO_BACKEND'in tersi — AdminUsersPage kullanici listesinde backend'den
+ * gelen role string'ini ("competitor" vb.) okunabilir etikete cevirmek icin. */
+export const BACKEND_TO_ROLE_LABEL: Record<string, string> = Object.fromEntries(
+  ROLE_OPTIONS.map((r) => [ROLE_TO_BACKEND[r.value], r.label])
+);

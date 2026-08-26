@@ -45,6 +45,13 @@ class UserRead(BaseModel):
     email: str
     full_name: str
     role: UserRole
+    is_active: bool = True
+    # SADECE GET /api/admin/users tarafindan doldurulur (bkz. app/api/admin.py >
+    # list_users) — frontend'in "Sil" onay mesajini tiklamadan ONCE dogru
+    # metinle gostermesi icin (kalici silme mi, devre disi mi birakilacak).
+    # create_user gibi diger UserRead donduren endpoint'lerde varsayilan False
+    # kalir (yeni acilan kullanicinin zaten bagli kaydi olamaz).
+    has_linked_records: bool = False
 
 
 class AdminCreateUserRequest(BaseModel):
