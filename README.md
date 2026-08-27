@@ -1,146 +1,203 @@
 # PRAGMA-AI
 
-## TEKNOFEST — Yapay Zeka Destekli SSS ve Chatbot Asistanı
+**PRAGMA-AI**, TEKNOFEST yarışmacılarının onlarca/yüzlerce sayfalık şartname ve teknik doküman içinde kaybolmadan, doğal dilde soru sorup **kaynağı gösterilen, doğrulanmış yanıtlar** alabilmesini sağlayan bir RAG (Retrieval-Augmented Generation) tabanlı SSS/asistan sistemidir. Sistem emin olmadığı durumlarda yanıt uydurmak yerine talebi insan destek ekibine devreder.
 
-Yarışmacıların sorularını yalnızca doğrulanmış, güncel kaynaklardan (şartname, kılavuz, onaylı
-SSS) yanıtlayan, **RAG (Retrieval-Augmented Generation)** tabanlı bir asistan. Sistem serbest
-ifadeyle sorulan soruları anlar, ilgili kaynak parçasını bulur, kaynağını göstererek yanıt verir;
-yeterli kanıt yoksa yanıt uydurmaz, insana yönlendirir.
+Bu proje T3 Vakfı Bursiyer Yapay Zekâ Creathonu 2026 kapsamında geliştirilmiştir.
 
-## Kullanıcı Rolleri
+---
 
-| Rol | Açıklama |
-|---|---|
-| **Yarışmacı** | Doğal dille soru sorar, kaynaklı yanıt alır |
-| **İçerik Yöneticisi** | Şartname/kılavuz/SSS kaynaklarını sisteme yükler, geçerliliğini yönetir (eski kaynağı pasife alma dahil) |
-| **Destek Ekibi** | Sistemin yanıtlayamadığı/insana yönlenen soruları devralır, yanıtlar, tekrarlayan konuları SSS havuzuna ekler |
-| **Sistem Yöneticisi** | Yanıt kalitesi, insana yönlendirme oranı, sık sorulan konuları izler |
+## İçindekiler
 
-## MVP Zorunlu Gereksinimler
+- [Problem](#problem)
+- [Çözüm](#çözüm)
+- [Özellikler](#özellikler)
+- [Mimari](#mimari)
+- [Roller ve Yetkilendirme](#roller-ve-yetkilendirme)
+- [Kurulum](#kurulum)
+- [Ortam Değişkenleri](#ortam-değişkenleri)
+- [Veritabanı Migrasyonları](#veritabanı-migrasyonları)
+- [API Genel Bakış](#api-genel-bakış)
+- [Doğrulama / Test Durumu](#doğrulama--test-durumu)
+- [Ekip](#ekip)
 
-1. **Doğrulanmış kaynak havuzu** — şartname, kılavuz, SSS yüklenir; kaynak adı ve geçerlilik bilgisi tutulur
-2. **RAG tabanlı doğal dil soru-cevap** — serbest ifadeli soru, ilgili kaynak parçalarından yanıtlanır
-3. **Kaynak gösterimi ve güven seviyesi** — her yanıt hangi belgeye dayandığını gösterir, yeterli kanıt yoksa kesin yanıt verilmez
-4. **Yarışma/kategori bağlamı** — kullanıcı ilgili yarışmayı seçer, arama sadece o kaynaklarda yapılır
-5. **İnsana yönlendirme mekanizması** — destek ekibine devir
-6. **Kaynak güncelleme akışı** — yeni belge yükleme, eski belgeyi pasife alma
+---
 
-## Temel Akışlar
+## Problem
 
-- **Akış 1 (Yarışmacı):** Yarışma seçer → soru yazar → kaynaklı yanıt görür → gerekirse destek ister
-- **Akış 2 (İçerik Yöneticisi):** Yeni şartname yükler → eski kaynağı pasife alır → bilgi havuzunu günceller
-- **Akış 3 (Destek Ekibi):** İnsana yönlenen soruları görür → yanıtlar → tekrarlayan yeni konuyu SSS havuzuna ekler
+TEKNOFEST yarışmacıları, 100+ sayfalık PDF şartnameler içinde aradıkları spesifik kuralı bulamıyor; aynı sorular destek ekiplerine (KYS üzerinden) tekrar tekrar geliyor ve yanıt süreleri uzuyor.
 
-Daha fazla teknik detay için bkz. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+## Çözüm
 
-## Teknoloji Yığını
+PRAGMA-AI, her yarışma/kategori için izole edilmiş bir bilgi tabanı üzerinden çalışan bir yapay zekâ asistanıdır:
 
-| Katman | Seçim | Gerekçe |
+1. İçerik yöneticisi, yarışmaya ait kaynak dokümanları (şartname, PDF vb.) sisteme yükler.
+2. Sistem bu dokümanları parçalara ayırıp (chunking) vektör temsillerini çıkarır ve yarışmaya özel bir vektör koleksiyonunda saklar.
+3. Yarışmacı doğal dilde soru sorduğunda, sistem en alakalı doküman parçalarını bulur ve bu parçalara dayanarak, kaynağını göstererek bir yanıt üretir.
+4. Sistem yanıttan emin değilse (düşük güven skoru, API hatası veya "yanıtlayamıyorum" durumu) talebi otomatik reddetmek yerine insana devreder; yarışmacı da isterse "destek iste" butonuyla talebi manuel olarak insana yönlendirebilir.
+
+## Özellikler
+
+- **Rol bazlı kayıt ve giriş:** Herkese açık kayıt ekranından yalnızca *Yarışmacı* rolüyle üye olunabilir. Diğer roller (İçerik Yöneticisi, Destek Uzmanı, Sistem Yöneticisi) yalnızca Sistem Yöneticisi tarafından, ayrı bir yönetim ekranından oluşturulur.
+- **Kategori + kaynak birlikte oluşturma:** İçerik yöneticisi yeni bir yarışma/kategori eklerken aynı adımda en az bir kaynak dosyası da yüklemek zorundadır; kaynak yükleme başarısız olursa oluşturulan kategori otomatik olarak geri alınır (rollback). Bu sayede yarışmacı ekranında hiçbir zaman "boş", kaynağı olmayan bir kategori görünmez.
+- **Güvenli kullanıcı silme:** Sistem yöneticisi bir kullanıcıyı sildiğinde, sistem önce o kullanıcıya bağlı kayıt (kaynak, soru-cevap, destek talebi, SSS girdisi) olup olmadığını kontrol eder. Bağlı kaydı yoksa kullanıcı tamamen silinir; varsa veri kaybını önlemek için kullanıcı **pasif hale getirilir** (soft delete) — geçmiş kayıtları korunur, sadece o hesapla yeni işlem yapılamaz. Kullanıcı kendi hesabını silemez.
+- **Kaynak atıflı, güven skorlu yanıtlar:** Her yanıt, dayandığı kaynak dokümana referans verir ve bir güven seviyesi taşır; düşük güven durumunda otomatik olarak insana devredilir.
+- **Yarışma bazında izole bilgi tabanı:** Her yarışmanın/kategorinin belgeleri ayrı bir vektör koleksiyonunda (`competition_{slug}`) tutulur, farklı yarışmaların içerikleri birbirine karışmaz.
+
+## Mimari
+
+```
+Frontend (React + Vite)
+        │ HTTP / JWT
+        ▼
+Backend (FastAPI)
+        │
+        ├──► PostgreSQL      → Kullanıcı, kaynak, soru-cevap, destek talebi verisi
+        ├──► ChromaDB        → Yarışma/kategori bazında izole RAG retrieval (vektör deposu)
+        └──► Google Gemini   → Embedding üretimi + doğal dilde yanıt üretimi
+```
+
+**RAG pipeline (özet):**
+
+1. **Chunking:** Yüklenen dokümanlar karakter bazlı kaydırmalı pencere ile parçalara bölünür (chunk ~800 karakter, ~150 karakter örtüşme).
+2. **Embedding:** Her parça Google Gemini embedding modeliyle vektöre çevrilir (doküman ve soru embedding'leri farklı görev tipiyle — `retrieval_document` / `retrieval_query` — üretilir).
+3. **Depolama:** Vektörler, yarışmaya özel bir koleksiyonda (`competition_{slug}`) saklanır.
+4. **Retrieval:** Gelen soru embedding'i ile kosinüs benzerliğine göre en alakalı parçalar bulunur.
+5. **Generation:** Gemini, bulunan parçalara dayanarak yapılandırılmış (JSON) bir yanıt üretir; yanıt "yanıtlanabilir mi", "güven seviyesi" gibi alanlar içerir.
+6. **Güvenlik ağı:** API hatası → insana devret; "yanıtlayamıyorum" → insana devret; güven seviyesi düşükse (yanıtlanabilir görünse bile) → yine insana devret.
+
+## Roller ve Yetkilendirme
+
+Kimlik doğrulama JWT (HS256) ile yapılır. Dört rol vardır:
+
+| Rol | Backend değeri | Açıklama |
 |---|---|---|
-| Backend | **Python + FastAPI** | RAG ekosisteminde (embedding, vektör arama, LLM SDK'ları) en olgun dil; async destek, otomatik Swagger dokümantasyonu ile hızlı demo |
-| Veritabanı | **PostgreSQL + SQLAlchemy** | İlişkisel veri (roller, kaynak metadata, loglar, yarışma/kategori) için endüstri standardı, Docker ile 1 komutla ayağa kalkar |
-| Vektör arama | **ChromaDB** | Sunucu kurulumu gerektirmez, pip ile 2 dakikada kurulur, dosya tabanlı persist — MVP ve canlı demo için ideal |
-| LLM entegrasyonu | **Google Gemini API** (embedding + chat) | Ücretsiz kotası olan tek sağlayıcıdan hem embedding (gemini-embedding-001) hem yanıt üretimi (gemini-3.6-flash), MVP/hackathon bütçesine uygun |
-| RAG orkestrasyon | **Custom (LangChain'siz)** | Hackathon temposunda ekip için şeffaf, debug edilebilir, minimal soyutlama — 4 adım (chunk → embed → retrieve → generate) doğrudan kodda |
-| Frontend | **React + Vite + TypeScript** | Hızlı kurulum/HMR, geniş ekosistem, ekibin öğrenme eğrisi düşük |
-| Stil | **Tailwind CSS** | Hızlı prototipleme, ayrı CSS dosyası yönetimi gerektirmez |
-| Veri getirme | **TanStack Query + Axios** | Basit, cache/loading state yönetimini elle yazmaya gerek bırakmaz |
-| Auth | **JWT (python-jose) + rol bazlı yetkilendirme** | 4 farklı rolün endpoint bazlı erişim kontrolü için yeterli, ekstra servis gerektirmez |
-| Test | **pytest** (backend) / **vitest** (frontend) | Her iki ekosistemin standart, düşük konfigürasyonlu test araçları |
-| Konteyner | **Docker Compose** | 4 kişilik ekipte "bende çalışıyor" sorununu ortadan kaldırır, tek komutla (`docker compose up`) tüm sistem ayağa kalkar |
+| **Yarışmacı** | `competitor` | Herkese açık kayıtla oluşturulabilen tek rol. Soru sorar, kaynaklı yanıt alır, gerekirse destek talep eder. |
+| **İçerik Yöneticisi** | `content_manager` | Yarışma/kategori ve kaynak dokümanları oluşturur ve yönetir. |
+| **Destek Uzmanı** | `support_agent` | İnsana devredilen talepleri (escalation) yanıtlar, SSS havuzuna ekler. |
+| **Sistem Yöneticisi** | `system_admin` | Her rolden kullanıcı oluşturabilir, kullanıcı silebilir/pasifleştirebilir, analitiklere erişir. |
 
-## Proje Yapısı
+Kritik uç noktalar `require_role(...)` bağımlılığıyla korunur; yetkisiz erişim `403`, kimliksiz erişim `401` ile reddedilir.
 
-```
-PRAGMA-AI/
-├── backend/                # FastAPI uygulaması
-│   ├── app/
-│   │   ├── main.py         # FastAPI giriş noktası
-│   │   ├── core/           # config, güvenlik/auth
-│   │   ├── api/            # router'lar (auth, sorular, kaynaklar, admin)
-│   │   ├── models/         # SQLAlchemy modelleri
-│   │   ├── schemas/        # Pydantic şemaları
-│   │   ├── rag/            # ingestion, chunking, embedding, retrieval, generation
-│   │   └── db/             # DB session/engine
-│   ├── tests/
-│   └── requirements.txt
-├── frontend/                # React + Vite uygulaması
-│   └── src/
-│       ├── pages/           # yarışmacı ve admin sayfaları
-│       ├── components/
-│       └── api/             # API client
-├── docs/
-│   └── ARCHITECTURE.md
-├── docker-compose.yml
-└── .env.example
+## Kurulum
+
+Docker Compose ile yerel kurulum (`docker-compose.yml`'de tanımlı servisler ve portlar):
+
+| Servis | Container | Yerel port |
+|---|---|---|
+| Backend (FastAPI) | `backend` | `http://localhost:8000` |
+| Frontend (Vite dev server) | `frontend` | `http://localhost:5173` |
+| PostgreSQL | `postgres` | `localhost:5432` (kullanıcı: `pragma`, db: `pragma_ai` — `docker-compose.yml` içinde sabit tanımlı) |
+
+```bash
+# 1. Repoyu klonlayın
+git clone https://github.com/eliff72/PRAGMA-AI.git
+cd PRAGMA-AI
+
+# 2. Ortam değişkenlerini ayarlayın
+cp .env.example .env
+# .env dosyasını açıp GEMINI_API_KEY ve diğer değerleri doldurun
+
+# 3. Servisleri ayağa kaldırın
+docker compose up -d
+
+# 4. Veritabanı migrasyonlarını uygulayın (ilk kurulumda / güncelleme sonrası)
+docker compose exec backend alembic upgrade head
 ```
 
-## Branch Yapısı
+Kurulum tamamlandığında:
+- API dokümantasyonu (Swagger): `http://localhost:8000/docs`
+- Frontend: `http://localhost:5173`
 
-Görev dağılımı branch bazlı yapılır; her branch main'den türetilir ve kendi kapsamındaki
-iskelet/özellikleri içerir:
+## Ortam Değişkenleri
 
-| Branch | Kapsam |
+`.env.example` dosyasındaki tüm değişkenler:
+
+| Değişken | Açıklama |
 |---|---|
-| `feature/backend-rag` | RAG pipeline: kaynak işleme (chunking), embedding, vektör arama, güven skoru |
-| `feature/backend-api` | API endpoint'leri, roller, auth (JWT) |
-| `feature/frontend-user` | Yarışmacı soru-cevap arayüzü |
-| `feature/frontend-admin` | İçerik yöneticisi ve destek ekibi panelleri |
-| `feature/database` | Veritabanı şeması: kaynaklar, roller, loglar, yarışma/kategori |
-| `feature/testing` | Test altyapısı (pytest + vitest) |
+| `DATABASE_URL` | Backend'in PostgreSQL bağlantı string'i (`postgresql+psycopg://pragma:pragma@localhost:5432/pragma_ai`). Docker Compose içinde `backend` servisi için host kısmı otomatik olarak `postgres` ile ezilir. |
+| `JWT_SECRET` | JWT imzalama anahtarı — **prod'da mutlaka değiştirin**. |
+| `JWT_ALGORITHM` | JWT algoritması (`HS256`). |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token geçerlilik süresi (dakika, varsayılan `60`). |
+| `GEMINI_API_KEY` | Google Gemini API anahtarı (embedding + generation için zorunlu). |
+| `GEMINI_CHAT_MODEL` | Yanıt üretiminde kullanılan Gemini modeli. |
+| `GEMINI_EMBEDDING_MODEL` | Embedding üretiminde kullanılan Gemini modeli. |
+| `CHROMA_PERSIST_DIR` | ChromaDB'nin diskte kalıcı verisini tuttuğu dizin (`./app/data/chroma`). |
+| `RAG_TOP_K` | Retrieval'da getirilecek en alakalı parça (chunk) sayısı. |
+| `RAG_MIN_SIMILARITY` | Retrieval için minimum benzerlik eşiği. |
+| `VITE_API_URL` | Frontend'in backend'e erişeceği adres (`http://localhost:8000`). |
+| `VITE_USE_MOCK` | `true` yapılırsa, backend'e gerçekten ulaşılamadığında (ağ hatası/timeout) arayüz mock veriye düşer. Backend ayakta ama gerçek bir hata dönüyorsa (401/403/404/500) bu bayrak açık olsa bile mock'a düşülmez. Varsayılan `false`. |
 
-## Hızlı Başlangıç
+> Not: PostgreSQL kullanıcı adı/şifre/veritabanı adı ayrı bir `.env` değişkeni değildir — `docker-compose.yml` içinde `postgres` servisi için sabit (`pragma` / `pragma` / `pragma_ai`) tanımlıdır; backend bu bilgilere sadece `DATABASE_URL` üzerinden erişir.
 
-```bash
-cp .env.example .env      # değerleri doldurun (özellikle GEMINI_API_KEY)
-docker compose up --build
-docker compose exec backend alembic upgrade head   # tablolari olustur (atlanirsa DB bomboş kalır)
-docker compose exec backend python -m app.db.seed  # demo kullanicilar + baslangic kategorileri
-```
+## Veritabanı Migrasyonları
 
-- Backend: http://localhost:8000/health — Swagger: http://localhost:8000/docs
-- Frontend: http://localhost:5173
-
-Docker olmadan yerel geliştirme:
+Şema değişiklikleri Alembic ile yönetilir:
 
 ```bash
-# Backend
-cd backend
-python -m venv .venv && .venv\Scripts\activate   # Windows
-pip install -r requirements.txt
-alembic upgrade head          # tablolari olustur (bu adim atlanirsa DB bombos kalir)
-uvicorn app.main:app --reload
+# Mevcut migrasyonları uygula
+docker compose exec backend alembic upgrade head
 
-# Frontend
-cd frontend
-npm install
-npm run dev
+# Yeni bir migrasyon oluştur (şema değişikliği sonrası)
+docker compose exec backend alembic revision --autogenerate -m "açıklama"
 ```
 
-### Önemli: local veritabanı herkeste ayrı ve boştur
+## API Genel Bakış
 
-`DATABASE_URL` varsayılan olarak `localhost`'a işaret eder (bkz.
-`backend/app/core/config.py`) ve Docker Compose de kendi local Postgres
-container'ını (kendi diskinde, boş bir volume ile) ayağa kaldırır. Bu yüzden
-**her geliştiricinin veritabanı fiziksel olarak ayrı ve başlangıçta boştur** —
-aynı `DATABASE_URL` değeri herkeste farklı bir veritabanına karşılık gelir.
+Frontend'in fiilen kullandığı uç noktalar aşağıdadır (rol koruması parantez içinde belirtilmiştir). Güncel ve eksiksiz şema için her zaman `/docs` (Swagger UI) esas alınmalıdır.
 
-- `python -m app.db.seed` **sadece o an bağlı olduğun boş veritabanına** demo
-  kullanıcı/kategori ekler (bkz. dosyanın içindeki uyarı). Bunu çalıştıran
-  herkes birbirleriyle aynı demo giriş bilgilerine (`content-manager@demo.ai`
-  vb.) sahip olur ama **gerçek/paylaşılan içeriği göremez** — çünkü o veri
-  yalnızca onu yükleyen kişinin kendi local veritabanında durur.
-- Gerçek/paylaşılan veriyi (gerçek kullanıcılar, yüklenmiş şartnameler) ekip
-  arkadaşlarına iletmek için `python -m app.db.seed` **kullanılmaz**; bunun
-  yerine veritabanını dışa aktarıp (`pg_dump`) paylaşın:
+**Kimlik doğrulama** (`/auth`)
+- `POST /auth/register` *(herkese açık)* — Yarışmacı kaydı; rol her zaman `competitor` olur.
+- `POST /auth/login` *(herkese açık)* — Giriş, JWT döner.
 
-  ```bash
-  # Veriyi export eden taraf (gerçek veriye sahip makine):
-  pg_dump -h localhost -U pragma -d pragma_ai -Fc -f pragma_ai.dump
+**Yarışma / kategori** (`/competitions`)
+- `GET /competitions` *(herkese açık)* — Aktif yarışma/kategori listesi.
+- `POST /competitions` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Yeni yarışma/kategori oluşturur.
+- `DELETE /competitions/{id}` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Bağlı kaydı (kaynak/soru/SSS) yoksa siler, varsa `409` döner.
 
-  # Veriyi içeri alan taraf (kendi boş local DB'sine):
-  pg_restore -h localhost -U pragma -d pragma_ai --clean --if-exists pragma_ai.dump
-  ```
+**Kaynak yönetimi** (`/api/resources`)
+- `GET /api/resources` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Tüm kaynakların listesi.
+- `GET /api/resources/{competitionId}/active` *(Yarışmacı, İçerik Yöneticisi, Sistem Yöneticisi)* — Bir kategorinin sadece aktif kaynakları.
+- `POST /api/resources` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Kaynak dosyası yükler (multipart), chunk'lar otomatik embed edilir.
+- `GET /api/resources/{id}/chunks` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Bir kaynağın parçalanmış içeriği.
+- `PATCH /api/resources/{id}/deactivate` / `PATCH /api/resources/{id}/activate` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Kaynağı pasife/aktife alır (vektör deposundan çıkarır/yeniden ekler).
+- `DELETE /api/resources/{id}` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Kalıcı silme.
 
-  `pragma_ai.dump` dosyasını **git'e commit etmeyin** — gerçek kullanıcı
-  verisi içerir; Slack/Drive gibi git-dışı bir kanaldan paylaşın.
+**Soru-cevap / RAG** (`/api`)
+- `POST /api/questions` *(Yarışmacı)* — Doğal dilde soru sorar; önce SSS havuzuyla eşleşmeye bakılır, yoksa RAG pipeline'ı çalışır.
+- `POST /api/questions/{qaLogId}/destege-gonder` *(Yarışmacı)* — Kanıt bulunamayan bir soruyu destek ekibine yönlendirir (escalation açar).
+
+**Destek talepleri** (`/escalations`)
+- `GET /escalations` *(Destek Uzmanı, Sistem Yöneticisi)* — Açık destek talepleri kuyruğu.
+- `GET /escalations/mine` *(Yarışmacı)* — Kendi gönderdiği taleplerin durumu.
+- `POST /escalations/{id}/resolve` *(Destek Uzmanı, Sistem Yöneticisi)* — Talebi yanıtlar; otomatik olarak SSS havuzuna eklenir.
+- `POST /escalations/{id}/add-to-faq` *(Destek Uzmanı, Sistem Yöneticisi)* — Zaten yanıtlanmış bir talebi SSS havuzuna ekler (tekrar eklemez).
+
+**SSS havuzu** (`/support/faq`)
+- `GET /support/faq` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Kategoriye göre filtrelenebilir SSS listesi.
+- `POST /support/faq/manual-entry` *(İçerik Yöneticisi, Sistem Yöneticisi)* — Elle SSS kaydı ekler.
+- `PATCH /support/faq/{id}/deactivate` *(İçerik Yöneticisi, Sistem Yöneticisi)* — SSS kaydını pasife alır.
+
+**Kullanıcı yönetimi** (`/api/admin`)
+- `GET /api/admin/users` *(Sistem Yöneticisi)* — Kullanıcı listesi (aktif/pasif ve bağlı-kayıt durumu dahil).
+- `POST /api/admin/users` *(Sistem Yöneticisi)* — Herhangi bir rolde kullanıcı oluşturur.
+- `DELETE /api/admin/users/{id}` *(Sistem Yöneticisi)* — Bağlı kaydı yoksa kalıcı siler, varsa hesabı pasifleştirir (soft delete); kendi hesabını silmeye izin vermez.
+
+**Analitik** (`/api/analytics`)
+- `GET /api/analytics` *(Sistem Yöneticisi)* — Toplam soru sayısı, escalation oranı, güven dağılımı, kategori bazlı istatistikler.
+
+> Not: `competitions.py` içinde ayrıca `POST/GET /competitions/{slug}/sources/...` ve `POST /competitions/{slug}/ask` gibi eski (legacy) uç noktalar da bulunur; frontend bunların yerine yukarıdaki `/api/resources` ve `/api/questions` (flat) sözleşmesini kullanır.
+
+## Doğrulama / Test Durumu
+
+Proje, Creathon PRD'sindeki 4 zorunlu MVP gereksinimi ve 3 uçtan uca kullanıcı senaryosu için canlı Google Gemini API kullanılarak test edilmiş ve tamamı başarıyla doğrulanmıştır. Ayrıca geliştirme sürecinde tespit edilen kritik bir yetkilendirme açığı (yarışma oluşturma uç noktasında eksik rol kontrolü) kapatılmıştır.
+
+## Ekip
+
+- **Elif Güney** — Backend & API
+- **Sümeyye Yoleri** — Yarışmacı Arayüzü
+- **Esma Altun** — Yönetim Panelleri
+- **Enes Özatak** — Test & Entegrasyon
+
+---
+
+*Bu README, projenin son durumuna (docker-compose.yml, .env.example ve backend route dosyaları) göre doğrulanarak güncellenmiştir.*
