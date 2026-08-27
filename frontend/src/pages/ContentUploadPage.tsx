@@ -102,18 +102,24 @@ export function ContentUploadPage() {
         // handleUploadSubmit catch'ine dusmesini engelliyoruz, bkz. rapor).
         if (createdCompetitionId) {
           const uploadDetail = axios.isAxiosError(uploadErr) ? uploadErr.response?.data?.detail : undefined;
-          const reason = typeof uploadDetail === "string" ? uploadDetail : "dosya bozuk olabilir veya desteklenmeyen bir formatta olabilir";
+          // Backend artik bilinen hata siniflari icin (orn. embedding API kota/rate-limit)
+          // aciklayici, tam cumlelik bir detail donuyor (bkz. app/api/resources.py
+          // create_resource) — varsa oldugu gibi kullaniyoruz, "Kaynak yuklenemedi"
+          // onekini tekrar eklemiyoruz ki mesaj cift/karisik olmasin.
+          const reason =
+            typeof uploadDetail === "string"
+              ? uploadDetail
+              : "Kaynak yüklenemedi: dosya bozuk olabilir veya desteklenmeyen bir formatta olabilir.";
           try {
             await deleteCompetition(createdCompetitionId);
             setUploadError(
-              `Kaynak yüklenemedi (${reason}), bu yüzden "${newCatName.trim()}" kategorisi de oluşturulmadı. ` +
-                "Lütfen geçerli bir dosyayla tekrar deneyin."
+              `${reason} Bu yüzden "${newCatName.trim()}" kategorisi de oluşturulmadı — kaynaksız kalmasın diye geri alındı.`
             );
           } catch (rollbackErr) {
             console.error("Rollback basarisiz — kategori manuel kontrol edilmeli:", rollbackErr);
             setUploadError(
-              `Kaynak yüklenemedi (${reason}) ve "${newCatName.trim()}" kategorisi geri alınamadı — ` +
-                "kategori kaynaksız kalmış olabilir, lütfen sistem yöneticisine bildirin."
+              `${reason} Ayrıca "${newCatName.trim()}" kategorisi geri alınamadı — kaynaksız kalmış olabilir, ` +
+                "lütfen sistem yöneticisine bildirin."
             );
           }
           return;

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from google.api_core.exceptions import GoogleAPICallError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -97,17 +98,28 @@ def create_resource(
     # "v2"), sayisal degilse 1'e (varsayilan) dusuyoruz — bkz. rapor.
     version_int = int(version) if version.strip().isdigit() else 1
 
-    source = store_and_ingest_source(
-        db,
-        competition_id=competition.id,
-        competition_slug=competition.slug,
-        filename=file.filename,
-        file_bytes=file.file.read(),
-        title=file.filename,
-        source_type=SourceType.SPECIFICATION,
-        version=version_int,
-        uploaded_by_id=current_user.id,
-    )
+    try:
+        source = store_and_ingest_source(
+            db,
+            competition_id=competition.id,
+            competition_slug=competition.slug,
+            filename=file.filename,
+            file_bytes=file.file.read(),
+            title=file.filename,
+            source_type=SourceType.SPECIFICATION,
+            version=version_int,
+            uploaded_by_id=current_user.id,
+        )
+    except GoogleAPICallError as exc:
+        # Embedding servisi (Gemini) kota/rate-limit veya gecici bir hata
+        # dondurdu — dosyanin kendisiyle ilgisi yok. Genel 500 yerine acik bir
+        # 503 donuyoruz ki frontend "dosya bozuk olabilir" gibi yanlis
+        # yonlendirici bir mesaj gostermesin (bkz. rapor).
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Kaynak yüklenemedi: AI servisi (embedding) şu anda yanıt vermiyor — kota/oran sınırına takılmış "
+            "olabilir. Dosyanızda bir sorun yok, lütfen birkaç dakika sonra tekrar deneyin.",
+        ) from exc
     return _to_knowledge_document(source, current_user.full_name)
 
 

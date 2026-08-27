@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from google.api_core.exceptions import GoogleAPICallError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -121,17 +122,27 @@ def upload_source(
 
     competition = _get_competition_or_404(db, slug)
 
-    source = store_and_ingest_source(
-        db,
-        competition_id=competition.id,
-        competition_slug=slug,
-        filename=file.filename,
-        file_bytes=file.file.read(),
-        title=resolved_title,
-        source_type=source_type,
-        version=1,
-        uploaded_by_id=current_user.id,
-    )
+    try:
+        source = store_and_ingest_source(
+            db,
+            competition_id=competition.id,
+            competition_slug=slug,
+            filename=file.filename,
+            file_bytes=file.file.read(),
+            title=resolved_title,
+            source_type=source_type,
+            version=1,
+            uploaded_by_id=current_user.id,
+        )
+    except GoogleAPICallError as exc:
+        # Embedding servisi (Gemini) kota/rate-limit veya gecici bir hata
+        # dondurdu — dosyanin kendisiyle ilgisi yok (bkz. app/api/resources.py
+        # create_resource, ayni desen).
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Kaynak yüklenemedi: AI servisi (embedding) şu anda yanıt vermiyor — kota/oran sınırına takılmış "
+            "olabilir. Dosyanızda bir sorun yok, lütfen birkaç dakika sonra tekrar deneyin.",
+        ) from exc
 
     return SourceUploadResponse(source_id=source.id, title=source.title, chunk_count=len(source.chunks))
 
